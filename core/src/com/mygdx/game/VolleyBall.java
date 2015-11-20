@@ -19,10 +19,10 @@ import com.badlogic.gdx.physics.box2d.PolygonShape;
 
 public class VolleyBall extends ApplicationAdapter implements InputProcessor {
 	SpriteBatch batch;
-	Sprite hippoSprite, ballSprite, netSprite;
+	Sprite rightHippoSprite, leftHippoSprite, ballSprite, netSprite;
 	Texture hippoImg, ballImg, netImg;
 	World world;
-	Body hippo, ball, net;
+	Body rightHippo, leftHippo, ball, net;
 	Body bottomEdge, topEdge, leftEdge, rightEdge;
 	Box2DDebugRenderer debugRenderer;
 	Matrix4 debugMatrix;
@@ -30,21 +30,28 @@ public class VolleyBall extends ApplicationAdapter implements InputProcessor {
 	BitmapFont font;
 
 	float torque = 0.0f;
-	float jumpHeight = 0.0f;
+	float rightJumpHeight = 0.0f;
+	float leftJumpHeight = 0.0f;
 	boolean drawSprite = true, drawDebug = true;
-	boolean upHeld = false, downHeld = false, rightHeld = false, leftHeld = false;
+	boolean upHeld = false, downHeld = false, rightHeld = false, leftHeld = false,
+		wHeld = false, sHeld = false, dHeld = false, aHeld = false;
 
-    // Hippo calibrations
-	final float HORIZONTAL_VELOCITY = 12.5f;
-	final float MAX_HORIZONTAL_VELOCITY = 6.25f;
-	final float JUMP_VELOCITY = 250f;
-	final float JUMP_HOLD_VELOCITY = 25f;
-	final float MAX_JUMP_HEIGHT = 350f;
+    // rightHippo calibrations
+	final float HIPPO_DENSITY = 1.25f;
+	final float HORIZONTAL_VELOCITY = 25f;
+	final float MAX_HORIZONTAL_VELOCITY = 6.75f;
+	final float JUMP_VELOCITY = 100f;
+	final float JUMP_HOLD_VELOCITY = 75f;
+	final float MAX_JUMP_HEIGHT = 400f;
 
 	// Other calibrations
 	final float WALL_RESTITUTION = 0.5f;
 	final float WALL_SCALE = 0.75f;
 	final float PIXELS_TO_METERS = 100f;
+
+	final short HIPPO_ENTITY = 0x1;
+	final short BALL_ENTITY = 0x1 << 1;
+	final short WORLD_ENTITY = 0x1 << 2;
 
 	@Override
 	public void create() {
@@ -52,39 +59,66 @@ public class VolleyBall extends ApplicationAdapter implements InputProcessor {
 		hippoImg = new Texture("Hippo.png");
 		ballImg = new Texture("volleyball.png");
 		netImg = new Texture("Net.png");
-		hippoSprite = new Sprite(hippoImg);
+		leftHippoSprite = new Sprite(hippoImg);
+		rightHippoSprite = new Sprite(hippoImg);
+		rightHippoSprite.flip(true,false); // Hippo will face towards the left
 		ballSprite = new Sprite(ballImg);
 		netSprite = new Sprite(netImg);
 
-		hippoSprite.setPosition(-hippoSprite.getWidth()/2,-hippoSprite.getHeight()/2);
-		ballSprite.setPosition(0,0);
-		netSprite.setPosition(-netSprite.getWidth()/2,-400);
+		netSprite.setPosition(-netSprite.getWidth()/2,-525);
 		netSprite.setScale(WALL_SCALE);
 
 		world = new World(new Vector2(0, -15f),true);
 
-		// Creating the hippo body
-		BodyDef hippoBodyDef = new BodyDef();
-		hippoBodyDef.type = BodyDef.BodyType.DynamicBody;
-		hippoBodyDef.position.set((hippoSprite.getX() + hippoSprite.getWidth()/2) / PIXELS_TO_METERS,
-				(hippoSprite.getY() + hippoSprite.getHeight()/2) / PIXELS_TO_METERS);
+		// Creating the rightHippo body
+		BodyDef rightHippoBodyDef = new BodyDef();
+		rightHippoBodyDef.type = BodyDef.BodyType.DynamicBody;
+		rightHippoBodyDef.position.set((rightHippoSprite.getX() + rightHippoSprite.getWidth()/2) / PIXELS_TO_METERS,
+				(rightHippoSprite.getY() + rightHippoSprite.getHeight()/2) / PIXELS_TO_METERS);
 
-		hippo = world.createBody(hippoBodyDef);
+		rightHippo = world.createBody(rightHippoBodyDef);
 
 		// Prevent the hippo's angular facing from changing
-		hippo.setFixedRotation(true);
+		rightHippo.setFixedRotation(true);
 
-		PolygonShape hippoShape = new PolygonShape();
-		hippoShape.setAsBox(hippoSprite.getWidth()/2 / PIXELS_TO_METERS,
-				hippoSprite.getHeight()/2 / PIXELS_TO_METERS);
+		PolygonShape rightHippoShape = new PolygonShape();
+		rightHippoShape.setAsBox(rightHippoSprite.getWidth()/2 / PIXELS_TO_METERS,
+				rightHippoSprite.getHeight()/2 / PIXELS_TO_METERS);
 
-		FixtureDef hippoFixtureDef = new FixtureDef();
-		hippoFixtureDef.shape = hippoShape;
-		hippoFixtureDef.density = 1.0f;
-		hippoFixtureDef.restitution = 0.0f; // No bounce on collision with walls or floor
+		FixtureDef rightHippoFixtureDef = new FixtureDef();
+		rightHippoFixtureDef.shape = rightHippoShape;
+		rightHippoFixtureDef.density = HIPPO_DENSITY;
+		rightHippoFixtureDef.restitution = 0.0f; // No bounce on collision with walls or floor
+		rightHippoFixtureDef.filter.categoryBits = HIPPO_ENTITY;
+		rightHippoFixtureDef.filter.maskBits = BALL_ENTITY|WORLD_ENTITY;
 
-		hippo.createFixture(hippoFixtureDef);
-		hippoShape.dispose();
+		rightHippo.createFixture(rightHippoFixtureDef);
+		rightHippoShape.dispose();
+
+		// Creating the leftHippo body
+		BodyDef leftHippoBodyDef = new BodyDef();
+		leftHippoBodyDef.type = BodyDef.BodyType.DynamicBody;
+		leftHippoBodyDef.position.set((leftHippoSprite.getX() + leftHippoSprite.getWidth()/2) / PIXELS_TO_METERS,
+				(leftHippoSprite.getY() + leftHippoSprite.getHeight()/2) / PIXELS_TO_METERS);
+
+		leftHippo = world.createBody(leftHippoBodyDef);
+
+		// Prevent the hippo's angular facing from changing
+		leftHippo.setFixedRotation(true);
+
+		PolygonShape leftHippoShape = new PolygonShape();
+		leftHippoShape.setAsBox(leftHippoSprite.getWidth()/2 / PIXELS_TO_METERS,
+				leftHippoSprite.getHeight()/2 / PIXELS_TO_METERS);
+
+		FixtureDef leftHippoFixtureDef = new FixtureDef();
+		leftHippoFixtureDef.shape = leftHippoShape;
+		leftHippoFixtureDef.density = HIPPO_DENSITY;
+		leftHippoFixtureDef.restitution = 0.0f; // No bounce on collision with walls or floor
+		leftHippoFixtureDef.filter.categoryBits = HIPPO_ENTITY;
+		leftHippoFixtureDef.filter.maskBits = BALL_ENTITY|WORLD_ENTITY;
+
+		leftHippo.createFixture(leftHippoFixtureDef);
+		leftHippoShape.dispose();
 
 		// Creating the ball body
 		BodyDef ballBodyDef = new BodyDef();
@@ -99,8 +133,10 @@ public class VolleyBall extends ApplicationAdapter implements InputProcessor {
 
 		FixtureDef ballFixtureDef = new FixtureDef();
 		ballFixtureDef.shape = ballShape;
-		ballFixtureDef.density = 0.75f; // Less density than the hippo
-		ballFixtureDef.restitution = 0.75f; // Unlike the hippo, the ball should bounce off surfaces
+		ballFixtureDef.density = 1.00f; // Less density than the rightHippo
+		ballFixtureDef.restitution = 0.65f; // Unlike the rightHippo, the ball should bounce off surfaces
+		ballFixtureDef.filter.categoryBits = BALL_ENTITY;
+		ballFixtureDef.filter.maskBits = HIPPO_ENTITY|WORLD_ENTITY;
 
 		ball.createFixture(ballFixtureDef);
 		ballShape.dispose();
@@ -120,8 +156,10 @@ public class VolleyBall extends ApplicationAdapter implements InputProcessor {
 
 		FixtureDef netFixtureDef = new FixtureDef();
 		netFixtureDef.shape = netShape;
-		netFixtureDef.density = 0.75f; // Less density than the hippo
-		netFixtureDef.restitution = 0.75f; // Unlike the hippo, the ball should bounce off surfaces
+		netFixtureDef.density = 0.25f;
+		netFixtureDef.restitution = 0.95f;
+		netFixtureDef.filter.categoryBits = WORLD_ENTITY;
+		netFixtureDef.filter.maskBits = BALL_ENTITY|HIPPO_ENTITY;
 
 		net.createFixture(netFixtureDef);
 		netShape.dispose();
@@ -137,6 +175,7 @@ public class VolleyBall extends ApplicationAdapter implements InputProcessor {
 		//bottomBodyDef.position.set(0, h-10/PIXELS_TO_METERS);
 		bottomBodyDef.position.set(0,0);
 		FixtureDef bottomFixtureDef = new FixtureDef();
+		bottomFixtureDef.filter.categoryBits = WORLD_ENTITY;
 
 		EdgeShape bottomEdgeShape = new EdgeShape();
 		bottomFixtureDef.shape = bottomEdgeShape;
@@ -154,6 +193,7 @@ public class VolleyBall extends ApplicationAdapter implements InputProcessor {
 		topBodyDef.type = BodyDef.BodyType.StaticBody;
 		topBodyDef.position.set(0,0);
 		FixtureDef topFixtureDef = new FixtureDef();
+		topFixtureDef.filter.categoryBits = WORLD_ENTITY;
 
 		EdgeShape topEdgeShape = new EdgeShape();
 		topFixtureDef.shape = topEdgeShape;
@@ -168,6 +208,7 @@ public class VolleyBall extends ApplicationAdapter implements InputProcessor {
 		leftBodyDef.type = BodyDef.BodyType.StaticBody;
 		leftBodyDef.position.set(0,0);
 		FixtureDef leftFixtureDef = new FixtureDef();
+		leftFixtureDef.filter.categoryBits = WORLD_ENTITY;
 
 		EdgeShape leftEdgeShape = new EdgeShape();
 		leftFixtureDef.shape = leftEdgeShape;
@@ -183,6 +224,7 @@ public class VolleyBall extends ApplicationAdapter implements InputProcessor {
 		rightBodyDef.type = BodyDef.BodyType.StaticBody;
 		rightBodyDef.position.set(0,0);
 		FixtureDef rightFixtureDef = new FixtureDef();
+		rightFixtureDef.filter.categoryBits = WORLD_ENTITY;
 
 		EdgeShape rightEdgeShape = new EdgeShape();
 		rightFixtureDef.shape = rightEdgeShape;
@@ -201,6 +243,8 @@ public class VolleyBall extends ApplicationAdapter implements InputProcessor {
 		font = new BitmapFont();
 		font.setColor(Color.BLACK);
 		camera = new OrthographicCamera(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+
+		reset();
 	}
 
 	private float elapsed = 0;
@@ -211,21 +255,37 @@ public class VolleyBall extends ApplicationAdapter implements InputProcessor {
 		world.step(1f/60f, 6, 2);
 
 		// Check if any of the keys are being held, then apply force accordingly
-		if(rightHeld && hippo.getLinearVelocity().x <= MAX_HORIZONTAL_VELOCITY)
-			hippo.applyForceToCenter(HORIZONTAL_VELOCITY,0f,true);
-		if(leftHeld && hippo.getLinearVelocity().x >= -MAX_HORIZONTAL_VELOCITY)
-			hippo.applyForceToCenter(-HORIZONTAL_VELOCITY,0f,true);
-		if(upHeld && jumpHeight < MAX_JUMP_HEIGHT) {
-			hippo.applyForceToCenter(0f, JUMP_HOLD_VELOCITY, true);
-			jumpHeight += JUMP_HOLD_VELOCITY;
+		if(rightHeld && rightHippo.getLinearVelocity().x <= MAX_HORIZONTAL_VELOCITY)
+			rightHippo.applyForceToCenter(HORIZONTAL_VELOCITY,0f,true);
+		if(leftHeld && rightHippo.getLinearVelocity().x >= -MAX_HORIZONTAL_VELOCITY)
+			rightHippo.applyForceToCenter(-HORIZONTAL_VELOCITY,0f,true);
+		if(upHeld && rightJumpHeight < MAX_JUMP_HEIGHT) {
+			rightHippo.applyForceToCenter(0f, JUMP_HOLD_VELOCITY, true);
+			rightJumpHeight = rightJumpHeight + JUMP_HOLD_VELOCITY;
 		}
-		if(downHeld)
-			hippo.applyForceToCenter(0f, -5f, true);
 
-		hippoSprite.setPosition(
-				(hippo.getPosition().x * PIXELS_TO_METERS) - hippoSprite.getWidth()/2,
-				(hippo.getPosition().y * PIXELS_TO_METERS) - hippoSprite.getHeight()/2);
-		hippoSprite.setRotation((float)Math.toDegrees(hippo.getAngle()));
+		if(dHeld && leftHippo.getLinearVelocity().x <= MAX_HORIZONTAL_VELOCITY)
+			leftHippo.applyForceToCenter(HORIZONTAL_VELOCITY,0f,true);
+		if(aHeld && leftHippo.getLinearVelocity().x >= -MAX_HORIZONTAL_VELOCITY)
+			leftHippo.applyForceToCenter(-HORIZONTAL_VELOCITY,0f,true);
+		if(wHeld && leftJumpHeight < MAX_JUMP_HEIGHT) {
+			leftHippo.applyForceToCenter(0f, JUMP_HOLD_VELOCITY, true);
+			leftJumpHeight = leftJumpHeight + JUMP_HOLD_VELOCITY;
+		}
+		/*
+		if(downHeld)
+			rightHippo.applyForceToCenter(0f, -5f, true);
+		*/
+
+		rightHippoSprite.setPosition(
+				(rightHippo.getPosition().x * PIXELS_TO_METERS) - rightHippoSprite.getWidth()/2,
+				(rightHippo.getPosition().y * PIXELS_TO_METERS) - rightHippoSprite.getHeight()/2);
+		rightHippoSprite.setRotation((float)Math.toDegrees(rightHippo.getAngle()));
+
+		leftHippoSprite.setPosition(
+				(leftHippo.getPosition().x * PIXELS_TO_METERS) - leftHippoSprite.getWidth()/2,
+				(leftHippo.getPosition().y * PIXELS_TO_METERS) - leftHippoSprite.getHeight()/2);
+		leftHippoSprite.setRotation((float)Math.toDegrees(leftHippo.getAngle()));
 
 		ballSprite.setPosition(
 				(ball.getPosition().x * PIXELS_TO_METERS) - ballSprite.getWidth() / 2,
@@ -235,19 +295,25 @@ public class VolleyBall extends ApplicationAdapter implements InputProcessor {
 		Gdx.gl.glClearColor(1, 1, 1, 1);
 		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
-		System.out.println(hippo.getPosition().y);
+		//System.out.println(rightHippo.getPosition().y);
 
 		batch.setProjectionMatrix(camera.combined);
 		debugMatrix = batch.getProjectionMatrix().cpy().scale(PIXELS_TO_METERS,	PIXELS_TO_METERS, 0);
 		batch.begin();
 
 		if (drawSprite) {
-			// Draw the hippo sprite
-			batch.draw(hippoSprite, hippoSprite.getX(), hippoSprite.getY(),
-					hippoSprite.getOriginX(), hippoSprite.getOriginY(),
-					hippoSprite.getWidth(), hippoSprite.getHeight(),
-					hippoSprite.getScaleX(), hippoSprite.getScaleY(),
-					hippoSprite.getRotation());
+			// Draw the rightHippo sprite
+			batch.draw(rightHippoSprite, rightHippoSprite.getX(), rightHippoSprite.getY(),
+					rightHippoSprite.getOriginX(), rightHippoSprite.getOriginY(),
+					rightHippoSprite.getWidth(), rightHippoSprite.getHeight(),
+					rightHippoSprite.getScaleX(), rightHippoSprite.getScaleY(),
+					rightHippoSprite.getRotation());
+
+			batch.draw(leftHippoSprite, leftHippoSprite.getX(), leftHippoSprite.getY(),
+					leftHippoSprite.getOriginX(), leftHippoSprite.getOriginY(),
+					leftHippoSprite.getWidth(), leftHippoSprite.getHeight(),
+					leftHippoSprite.getScaleX(), leftHippoSprite.getScaleY(),
+					leftHippoSprite.getRotation());
 
 			// Draw the ball sprite
 			batch.draw(ballSprite, ballSprite.getX(), ballSprite.getY(),
@@ -285,24 +351,42 @@ public class VolleyBall extends ApplicationAdapter implements InputProcessor {
 		// When the user presses an arrow key, apply an initial force and enable additional
 		// force to be added during the render loop
 		if(keycode == Input.Keys.RIGHT) {
-			hippo.applyForceToCenter(HORIZONTAL_VELOCITY, 0f, true);
+			rightHippo.applyForceToCenter(HORIZONTAL_VELOCITY, 0f, true);
 			rightHeld = true;
 		}
 		if(keycode == Input.Keys.LEFT) {
-			hippo.applyForceToCenter(-HORIZONTAL_VELOCITY, 0f,true);
+			rightHippo.applyForceToCenter(-HORIZONTAL_VELOCITY, 0f,true);
 			leftHeld = true;
 		}
 		if(keycode == Input.Keys.UP) {
-			// Only allow jumping if the hippo is actually touching the ground
-			if (hippo.getLinearVelocity().y <= 1 && hippo.getLinearVelocity().y >= 0 /* && hippo.getPosition().y < -2 */ ) {
-				hippo.applyForceToCenter(0f, JUMP_VELOCITY, true);
-				jumpHeight = JUMP_VELOCITY;
+			// Only allow jumping if the rightHippo is actually touching the ground
+			if (rightHippo.getLinearVelocity().y <= 1 && rightHippo.getLinearVelocity().y >= 0 /* && rightHippo.getPosition().y < -2 */ ) {
+				rightHippo.applyForceToCenter(0f, JUMP_VELOCITY, true);
+				rightJumpHeight = JUMP_VELOCITY;
 				upHeld = true;
 			}
 		}
+		/*
 		if(keycode == Input.Keys.DOWN) {
-			hippo.applyForceToCenter(0f, 5f, true);
 			downHeld = true;
+		}
+		*/
+
+		if(keycode == Input.Keys.D) {
+			leftHippo.applyForceToCenter(HORIZONTAL_VELOCITY, 0f, true);
+			dHeld = true;
+		}
+		if(keycode == Input.Keys.A) {
+			leftHippo.applyForceToCenter(-HORIZONTAL_VELOCITY, 0f,true);
+			aHeld = true;
+		}
+		if(keycode == Input.Keys.W) {
+			// Only allow jumping if the rightHippo is actually touching the ground
+			if (leftHippo.getLinearVelocity().y <= 1 && leftHippo.getLinearVelocity().y >= 0 /* && leftHippo.getPosition().y < -2 */ ) {
+				leftHippo.applyForceToCenter(0f, JUMP_VELOCITY, true);
+				leftJumpHeight = JUMP_VELOCITY;
+				wHeld = true;
+			}
 		}
 
 		return true;
@@ -320,17 +404,18 @@ public class VolleyBall extends ApplicationAdapter implements InputProcessor {
 		if(keycode == Input.Keys.DOWN)
 			downHeld = false;
 
+		if(keycode == Input.Keys.D)
+			dHeld = false;
+		if(keycode == Input.Keys.A)
+			aHeld = false;
+		if(keycode == Input.Keys.W)
+			wHeld = false;
+		if(keycode == Input.Keys.S)
+			sHeld = false;
+
 		// If user hits spacebar, reset everything back to normal
 		if(keycode == Input.Keys.SPACE|| keycode == Input.Keys.NUM_2) {
-			hippo.setLinearVelocity(0f, 0f);
-			hippo.setAngularVelocity(0f);
-			hippoSprite.setPosition(0f,0f);
-			hippo.setTransform(0f,0f,0f);
-
-			ball.setLinearVelocity(0f, 0f);
-			ball.setAngularVelocity(0f);
-			ballSprite.setPosition(0f,0f);
-			ball.setTransform(0f,0f,0f);
+			reset();
 		}
 
 		// Allow user to change ball restitution using comma and period keys
@@ -382,5 +467,22 @@ public class VolleyBall extends ApplicationAdapter implements InputProcessor {
 	@Override
 	public boolean scrolled(int amount) {
 		return false;
+	}
+
+	public void reset() {
+		rightHippo.setLinearVelocity(0f, 0f);
+		rightHippo.setAngularVelocity(0f);
+		rightHippoSprite.setPosition(rightHippoSprite.getWidth()*4f,-rightHippoSprite.getHeight()*5.15f);
+		rightHippo.setTransform(rightHippoSprite.getWidth()*4f/PIXELS_TO_METERS,-rightHippoSprite.getHeight()*5.15f/PIXELS_TO_METERS,0f);
+
+		leftHippo.setLinearVelocity(0f, 0f);
+		leftHippo.setAngularVelocity(0f);
+		leftHippoSprite.setPosition(-leftHippoSprite.getWidth()*4f,-leftHippoSprite.getHeight()*5.15f);
+		leftHippo.setTransform(-leftHippoSprite.getWidth()*4f/PIXELS_TO_METERS,-leftHippoSprite.getHeight()*5.15f/PIXELS_TO_METERS,0f);
+
+		ball.setLinearVelocity(0f, 0f);
+		ball.setAngularVelocity(1f);
+		ballSprite.setPosition(-rightHippoSprite.getWidth()*3.5f,rightHippoSprite.getHeight()/2f);
+		ball.setTransform(-rightHippoSprite.getWidth()*3.5f/PIXELS_TO_METERS,rightHippoSprite.getHeight()/2f/PIXELS_TO_METERS,0f);
 	}
 }
