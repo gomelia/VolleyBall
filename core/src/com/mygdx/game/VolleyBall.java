@@ -39,10 +39,11 @@ public class VolleyBall extends ApplicationAdapter implements InputProcessor {
     // rightHippo calibrations
 	final float HIPPO_DENSITY = 1.25f;
 	final float HORIZONTAL_VELOCITY = 25f;
+	final float DOWN_VELOCITY = -1.5f;
 	final float MAX_HORIZONTAL_VELOCITY = 6.75f;
 	final float JUMP_VELOCITY = 100f;
 	final float JUMP_HOLD_VELOCITY = 75f;
-	final float MAX_JUMP_HEIGHT = 404f;
+	final float MAX_JUMP_HEIGHT = 400f;
 
 	// Other calibrations
 	final float WALL_RESTITUTION = 0.5f;
@@ -255,27 +256,39 @@ public class VolleyBall extends ApplicationAdapter implements InputProcessor {
 		world.step(1f/60f, 6, 2);
 
 		// Check if any of the keys are being held, then apply force accordingly
-		if(rightHeld && rightHippo.getLinearVelocity().x <= MAX_HORIZONTAL_VELOCITY)
-			rightHippo.applyForceToCenter(HORIZONTAL_VELOCITY,0f,true);
-		if(leftHeld && rightHippo.getLinearVelocity().x >= -MAX_HORIZONTAL_VELOCITY)
-			rightHippo.applyForceToCenter(-HORIZONTAL_VELOCITY,0f,true);
+		if(rightHeld && rightHippo.getLinearVelocity().x <= MAX_HORIZONTAL_VELOCITY) {
+			if (rightHippo.getPosition().y > -2)
+				rightHippo.applyForceToCenter(HORIZONTAL_VELOCITY, DOWN_VELOCITY, true);
+			else
+				rightHippo.applyForceToCenter(HORIZONTAL_VELOCITY, 0f,true);
+		}
+		if(leftHeld && rightHippo.getLinearVelocity().x >= -MAX_HORIZONTAL_VELOCITY) {
+			if (rightHippo.getPosition().y > -2)
+				rightHippo.applyForceToCenter(-HORIZONTAL_VELOCITY, DOWN_VELOCITY, true);
+			else
+				rightHippo.applyForceToCenter(-HORIZONTAL_VELOCITY, 0f,true);
+		}
 		if(upHeld && rightJumpHeight < MAX_JUMP_HEIGHT) {
 			rightHippo.applyForceToCenter(0f, JUMP_HOLD_VELOCITY, true);
 			rightJumpHeight = rightJumpHeight + JUMP_HOLD_VELOCITY;
 		}
 
-		if(dHeld && leftHippo.getLinearVelocity().x <= MAX_HORIZONTAL_VELOCITY)
-			leftHippo.applyForceToCenter(HORIZONTAL_VELOCITY,0f,true);
-		if(aHeld && leftHippo.getLinearVelocity().x >= -MAX_HORIZONTAL_VELOCITY)
-			leftHippo.applyForceToCenter(-HORIZONTAL_VELOCITY,0f,true);
+		if(dHeld && leftHippo.getLinearVelocity().x <= MAX_HORIZONTAL_VELOCITY) {
+			if (leftHippo.getPosition().y > -2)
+				leftHippo.applyForceToCenter(HORIZONTAL_VELOCITY, DOWN_VELOCITY, true);
+			else
+				leftHippo.applyForceToCenter(HORIZONTAL_VELOCITY, 0f,true);
+		}
+		if(aHeld && leftHippo.getLinearVelocity().x >= -MAX_HORIZONTAL_VELOCITY) {
+			if (leftHippo.getPosition().y > -2)
+				leftHippo.applyForceToCenter(-HORIZONTAL_VELOCITY, DOWN_VELOCITY, true);
+			else
+				leftHippo.applyForceToCenter(-HORIZONTAL_VELOCITY, 0f, true);
+		}
 		if(wHeld && leftJumpHeight < MAX_JUMP_HEIGHT) {
 			leftHippo.applyForceToCenter(0f, JUMP_HOLD_VELOCITY, true);
 			leftJumpHeight = leftJumpHeight + JUMP_HOLD_VELOCITY;
 		}
-		/*
-		if(downHeld)
-			rightHippo.applyForceToCenter(0f, -5f, true);
-		*/
 
 		rightHippoSprite.setPosition(
 				(rightHippo.getPosition().x * PIXELS_TO_METERS) - rightHippoSprite.getWidth()/2,
@@ -351,38 +364,45 @@ public class VolleyBall extends ApplicationAdapter implements InputProcessor {
 		// When the user presses an arrow key, apply an initial force and enable additional
 		// force to be added during the render loop
 		if(keycode == Input.Keys.RIGHT) {
-			rightHippo.applyForceToCenter(HORIZONTAL_VELOCITY, 0f, true);
+			if (rightHippo.getPosition().y > -2)
+				rightHippo.applyForceToCenter(HORIZONTAL_VELOCITY, DOWN_VELOCITY, true);
+			else
+				rightHippo.applyForceToCenter(HORIZONTAL_VELOCITY, 0f,true);
 			rightHeld = true;
 		}
 		if(keycode == Input.Keys.LEFT) {
-			rightHippo.applyForceToCenter(-HORIZONTAL_VELOCITY, 0f,true);
+			if (rightHippo.getPosition().y > -2)
+				rightHippo.applyForceToCenter(-HORIZONTAL_VELOCITY, DOWN_VELOCITY, true);
+			else
+				rightHippo.applyForceToCenter(-HORIZONTAL_VELOCITY, 0f,true);
 			leftHeld = true;
 		}
 		if(keycode == Input.Keys.UP) {
 			// Only allow jumping if the rightHippo is actually touching the ground
-			if (rightHippo.getLinearVelocity().y <= 1 && rightHippo.getLinearVelocity().y >= 0 /* && rightHippo.getPosition().y < -2 */ ) {
+			if (rightHippo.getLinearVelocity().y <= 1 && rightHippo.getLinearVelocity().y >= 0 && rightHippo.getPosition().y < -2 ) {
 				rightHippo.applyForceToCenter(0f, JUMP_VELOCITY, true);
 				rightJumpHeight = JUMP_VELOCITY;
 				upHeld = true;
 			}
 		}
-		/*
-		if(keycode == Input.Keys.DOWN) {
-			downHeld = true;
-		}
-		*/
 
 		if(keycode == Input.Keys.D) {
-			leftHippo.applyForceToCenter(HORIZONTAL_VELOCITY, 0f, true);
+			if (leftHippo.getPosition().y > -2)
+				leftHippo.applyForceToCenter(HORIZONTAL_VELOCITY, DOWN_VELOCITY, true);
+			else
+				leftHippo.applyForceToCenter(HORIZONTAL_VELOCITY, 0f,true);
 			dHeld = true;
 		}
 		if(keycode == Input.Keys.A) {
-			leftHippo.applyForceToCenter(-HORIZONTAL_VELOCITY, 0f,true);
+			if (leftHippo.getPosition().y > -2)
+				leftHippo.applyForceToCenter(-HORIZONTAL_VELOCITY, DOWN_VELOCITY, true);
+			else
+				leftHippo.applyForceToCenter(-HORIZONTAL_VELOCITY, 0f,true);
 			aHeld = true;
 		}
 		if(keycode == Input.Keys.W) {
-			// Only allow jumping if the rightHippo is actually touching the ground
-			if (leftHippo.getLinearVelocity().y <= 1 && leftHippo.getLinearVelocity().y >= 0 /* && leftHippo.getPosition().y < -2 */ ) {
+			// Only allow jumping if the leftHippo is actually touching the ground
+			if (leftHippo.getLinearVelocity().y <= 1 && leftHippo.getLinearVelocity().y >= 0 && leftHippo.getPosition().y < -2 ) {
 				leftHippo.applyForceToCenter(0f, JUMP_VELOCITY, true);
 				leftJumpHeight = JUMP_VELOCITY;
 				wHeld = true;
