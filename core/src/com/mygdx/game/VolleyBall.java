@@ -43,7 +43,7 @@ public class VolleyBall extends ApplicationAdapter implements InputProcessor {
 	final float MAX_HORIZONTAL_VELOCITY = 6.75f;
 	final float JUMP_VELOCITY = 100f;
 	final float JUMP_HOLD_VELOCITY = 75f;
-	final float MAX_JUMP_HEIGHT = 400f;
+	final float MAX_JUMP_HEIGHT = 402f;
 
 	// Other calibrations
 	final float WALL_RESTITUTION = 0.5f;
@@ -142,7 +142,7 @@ public class VolleyBall extends ApplicationAdapter implements InputProcessor {
 		ball.createFixture(ballFixtureDef);
 		ballShape.dispose();
 
-		// Creating the volleyball net body
+		// Creating the volleyball net bodysdgsdf
 
 		BodyDef netBodyDef = new BodyDef();
 		netBodyDef.type = BodyDef.BodyType.StaticBody;
