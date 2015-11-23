@@ -2,10 +2,8 @@ package com.mygdx.game;
 
 import java.util.Iterator;
 
-import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.Input;
+import com.badlogic.gdx.*;
 import com.badlogic.gdx.Input.Keys;
-import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.audio.Music;
 import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.Color;
@@ -20,7 +18,7 @@ import com.badlogic.gdx.physics.box2d.*;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.TimeUtils;
 
-public class GameScreen implements Screen {
+public class GameScreen extends ApplicationAdapter implements Screen, InputProcessor {
     final VolleyBall game;
 
     // Implement pause/resume
@@ -39,29 +37,32 @@ public class GameScreen implements Screen {
     float torque = 0.0f;
     float rightJumpHeight = 0.0f;
     float leftJumpHeight = 0.0f;
+    boolean isMovementAllowed = true; // Enable/disable player control for hippos
+    boolean cycleToRight = false; // Used for resetting the game state
+    boolean upHeld = false, rightHeld = false, leftHeld = false,
+            wHeld = false, dHeld = false, aHeld = false; // Tracking key states for hippo movement
     boolean drawSprite = true, drawDebug = true;
-    boolean upHeld = false, downHeld = false, rightHeld = false, leftHeld = false,
-            wHeld = false, sHeld = false, dHeld = false, aHeld = false;
 
-    // rightHippo calibrations
+    // Hippo calibrations
     final float HIPPO_DENSITY = 1.25f;
-    final float HORIZONTAL_VELOCITY = 25f;
-    final float MAX_HORIZONTAL_VELOCITY = 6.75f;
-    final float JUMP_VELOCITY = 100f;
-    final float JUMP_HOLD_VELOCITY = 75f;
-    final float MAX_JUMP_HEIGHT = 404f;
+    final float HORIZONTAL_VELOCITY = 25f; // Velocity when pressing or holding Left/Right or A/D
+    final float MAX_HORIZONTAL_VELOCITY = 6.75f; // Max horizontal speed
+    final float JUMP_VELOCITY = 100f; // Initial velocity when pressing Up or W
+    final float JUMP_HOLD_VELOCITY = 75f; // Incremental velocity when holding Up or W
+    final float MAX_JUMP_HEIGHT = 400f; // Constraint to prevent hippos from perpetually floating up
 
     // Other calibrations
     final float WALL_RESTITUTION = 0.5f;
-    final float WALL_SCALE = 0.75f;
+    final float NET_SCALE = 0.75f;
     final float PIXELS_TO_METERS = 100f;
 
+    // Entity definitions
     final short HIPPO_ENTITY = 0x1;
     final short BALL_ENTITY = 0x1 << 1;
     final short WORLD_ENTITY = 0x1 << 2;
 
-    public GameScreen(final VolleyBall gam) {
-        this.game = gam;
+    public GameScreen(final VolleyBall game) {
+        this.game = game;
 
         batch = new SpriteBatch();
         hippoImg = new Texture("Hippo.png");
@@ -74,11 +75,13 @@ public class GameScreen implements Screen {
         netSprite = new Sprite(netImg);
 
         netSprite.setPosition(-netSprite.getWidth()/2,-525);
-        netSprite.setScale(WALL_SCALE);
+        netSprite.setScale(NET_SCALE);
 
         world = new World(new Vector2(0, -15f),true);
 
-        // Creating the rightHippo body
+        /*
+            Creating the rightHippo body
+        */
         BodyDef rightHippoBodyDef = new BodyDef();
         rightHippoBodyDef.type = BodyDef.BodyType.DynamicBody;
         rightHippoBodyDef.position.set((rightHippoSprite.getX() + rightHippoSprite.getWidth()/2) / PIXELS_TO_METERS,
@@ -103,7 +106,9 @@ public class GameScreen implements Screen {
         rightHippo.createFixture(rightHippoFixtureDef);
         rightHippoShape.dispose();
 
-        // Creating the leftHippo body
+        /*
+            Creating the leftHippo body
+        */
         BodyDef leftHippoBodyDef = new BodyDef();
         leftHippoBodyDef.type = BodyDef.BodyType.DynamicBody;
         leftHippoBodyDef.position.set((leftHippoSprite.getX() + leftHippoSprite.getWidth()/2) / PIXELS_TO_METERS,
@@ -128,7 +133,9 @@ public class GameScreen implements Screen {
         leftHippo.createFixture(leftHippoFixtureDef);
         leftHippoShape.dispose();
 
-        // Creating the ball body
+        /*
+            Creating the ball body
+        */
         BodyDef ballBodyDef = new BodyDef();
         ballBodyDef.type = BodyDef.BodyType.DynamicBody;
         ballBodyDef.position.set((ballSprite.getX() + ballSprite.getWidth()/2) / PIXELS_TO_METERS,
@@ -149,8 +156,9 @@ public class GameScreen implements Screen {
         ball.createFixture(ballFixtureDef);
         ballShape.dispose();
 
-        // Creating the volleyball net body
-
+        /*
+            Creating the net body
+        */
         BodyDef netBodyDef = new BodyDef();
         netBodyDef.type = BodyDef.BodyType.StaticBody;
         netBodyDef.position.set((netSprite.getX() + netSprite.getWidth()/2) / PIXELS_TO_METERS,
@@ -159,21 +167,21 @@ public class GameScreen implements Screen {
         net = world.createBody(netBodyDef);
 
         PolygonShape netShape = new PolygonShape();
-        netShape.setAsBox(netSprite.getWidth()*WALL_SCALE / 2 / PIXELS_TO_METERS,
-                netSprite.getHeight()*WALL_SCALE / 2 / PIXELS_TO_METERS);
+        netShape.setAsBox(netSprite.getWidth()*NET_SCALE / 2 / PIXELS_TO_METERS,
+                netSprite.getHeight()*NET_SCALE / 2 / PIXELS_TO_METERS);
 
         FixtureDef netFixtureDef = new FixtureDef();
         netFixtureDef.shape = netShape;
-        netFixtureDef.density = 0.25f;
-        netFixtureDef.restitution = 0.95f;
+        netFixtureDef.restitution = 0.95f; // Hippos and ball will retain most of their velocity after collision
         netFixtureDef.filter.categoryBits = WORLD_ENTITY;
         netFixtureDef.filter.maskBits = BALL_ENTITY|HIPPO_ENTITY;
 
         net.createFixture(netFixtureDef);
         netShape.dispose();
 
-
-        // Defining the bottom edge of the screen
+        /*
+            Defining the bottom edge of the screen
+        */
         BodyDef bottomBodyDef = new BodyDef();
         bottomBodyDef.type = BodyDef.BodyType.StaticBody;
         float w = Gdx.graphics.getWidth()/PIXELS_TO_METERS;
@@ -196,7 +204,9 @@ public class GameScreen implements Screen {
         // We don't want the 50 pixel padding for the other edges, so set height to screen height
         h = Gdx.graphics.getHeight()/PIXELS_TO_METERS;
 
-        // Top screen edge definition
+        /*
+            Top screen edge definition
+        */
         BodyDef topBodyDef = new BodyDef();
         topBodyDef.type = BodyDef.BodyType.StaticBody;
         topBodyDef.position.set(0,0);
@@ -211,7 +221,9 @@ public class GameScreen implements Screen {
         topEdge.createFixture(topFixtureDef);
         topEdgeShape.dispose();
 
-        // Left screen edge definition
+        /*
+            Left screen edge definition
+        */
         BodyDef leftBodyDef = new BodyDef();
         leftBodyDef.type = BodyDef.BodyType.StaticBody;
         leftBodyDef.position.set(0,0);
@@ -227,7 +239,9 @@ public class GameScreen implements Screen {
         leftEdge.createFixture(leftFixtureDef);
         leftEdgeShape.dispose();
 
-        // Right screen edge definition
+        /*
+            Right screen edge definition
+        */
         BodyDef rightBodyDef = new BodyDef();
         rightBodyDef.type = BodyDef.BodyType.StaticBody;
         rightBodyDef.position.set(0,0);
@@ -242,51 +256,49 @@ public class GameScreen implements Screen {
         rightEdge = world.createBody(rightBodyDef);
         rightEdge.createFixture(rightFixtureDef);
         rightEdgeShape.dispose();
-
         // End edge definitions
 
-       // Gdx.input.setInputProcessor(this);
+        Gdx.input.setInputProcessor(this);
 
         debugRenderer = new Box2DDebugRenderer();
         font = new BitmapFont();
         font.setColor(Color.BLACK);
         camera = new OrthographicCamera(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 
-        reset();
-
+        reset(rightHippo);
     }
-
 
     @Override
     public void render(float delta) {
         camera.update();
 
+        switch (state) {
+            case RUN:
+                // Step the physics simulation forward at a rate of 60hz
+                world.step(1f/60f, 6, 2);
 
-        // Step the physics simulation forward at a rate of 60hz
-        world.step(1f/60f, 6, 2);
+                // Check if any of the keys are being held, then apply force accordingly
+                if(rightHeld && rightHippo.getLinearVelocity().x <= MAX_HORIZONTAL_VELOCITY)
+                    rightHippo.applyForceToCenter(HORIZONTAL_VELOCITY,0f,true);
+                if(leftHeld && rightHippo.getLinearVelocity().x >= -MAX_HORIZONTAL_VELOCITY)
+                    rightHippo.applyForceToCenter(-HORIZONTAL_VELOCITY,0f,true);
+                if(upHeld && rightJumpHeight < MAX_JUMP_HEIGHT) {
+                    rightHippo.applyForceToCenter(0f, JUMP_HOLD_VELOCITY, true);
+                    rightJumpHeight = rightJumpHeight + JUMP_HOLD_VELOCITY;
+                }
 
-        // Check if any of the keys are being held, then apply force accordingly
-        if(rightHeld && rightHippo.getLinearVelocity().x <= MAX_HORIZONTAL_VELOCITY)
-            rightHippo.applyForceToCenter(HORIZONTAL_VELOCITY,0f,true);
-        if(leftHeld && rightHippo.getLinearVelocity().x >= -MAX_HORIZONTAL_VELOCITY)
-            rightHippo.applyForceToCenter(-HORIZONTAL_VELOCITY,0f,true);
-        if(upHeld && rightJumpHeight < MAX_JUMP_HEIGHT) {
-            rightHippo.applyForceToCenter(0f, JUMP_HOLD_VELOCITY, true);
-            rightJumpHeight = rightJumpHeight + JUMP_HOLD_VELOCITY;
-        }
-
-        if(dHeld && leftHippo.getLinearVelocity().x <= MAX_HORIZONTAL_VELOCITY)
-            leftHippo.applyForceToCenter(HORIZONTAL_VELOCITY,0f,true);
-        if(aHeld && leftHippo.getLinearVelocity().x >= -MAX_HORIZONTAL_VELOCITY)
-            leftHippo.applyForceToCenter(-HORIZONTAL_VELOCITY,0f,true);
-        if(wHeld && leftJumpHeight < MAX_JUMP_HEIGHT) {
-            leftHippo.applyForceToCenter(0f, JUMP_HOLD_VELOCITY, true);
-            leftJumpHeight = leftJumpHeight + JUMP_HOLD_VELOCITY;
-        }
-		/*
-		if(downHeld)
-			rightHippo.applyForceToCenter(0f, -5f, true);
-		*/
+                if(dHeld && leftHippo.getLinearVelocity().x <= MAX_HORIZONTAL_VELOCITY)
+                    leftHippo.applyForceToCenter(HORIZONTAL_VELOCITY,0f,true);
+                if(aHeld && leftHippo.getLinearVelocity().x >= -MAX_HORIZONTAL_VELOCITY)
+                    leftHippo.applyForceToCenter(-HORIZONTAL_VELOCITY,0f,true);
+                if(wHeld && leftJumpHeight < MAX_JUMP_HEIGHT) {
+                    leftHippo.applyForceToCenter(0f, JUMP_HOLD_VELOCITY, true);
+                    leftJumpHeight = leftJumpHeight + JUMP_HOLD_VELOCITY;
+                }
+                break; // End RESUME case
+            case PAUSE:
+                break;
+        } // End switch
 
         rightHippoSprite.setPosition(
                 (rightHippo.getPosition().x * PIXELS_TO_METERS) - rightHippoSprite.getWidth()/2,
@@ -306,8 +318,6 @@ public class GameScreen implements Screen {
         Gdx.gl.glClearColor(1, 1, 1, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
-        //System.out.println(rightHippo.getPosition().y);
-
         batch.setProjectionMatrix(camera.combined);
         debugMatrix = batch.getProjectionMatrix().cpy().scale(PIXELS_TO_METERS,	PIXELS_TO_METERS, 0);
         batch.begin();
@@ -320,6 +330,7 @@ public class GameScreen implements Screen {
                     rightHippoSprite.getScaleX(), rightHippoSprite.getScaleY(),
                     rightHippoSprite.getRotation());
 
+            // Draw the leftHippo sprite
             batch.draw(leftHippoSprite, leftHippoSprite.getX(), leftHippoSprite.getY(),
                     leftHippoSprite.getOriginX(), leftHippoSprite.getOriginY(),
                     leftHippoSprite.getWidth(), leftHippoSprite.getHeight(),
@@ -333,6 +344,7 @@ public class GameScreen implements Screen {
                     ballSprite.getScaleX(), ballSprite.getScaleY(),
                     ballSprite.getRotation());
 
+            // Draw the net sprite
             batch.draw(netSprite, netSprite.getX(), netSprite.getY(),
                     netSprite.getOriginX(), netSprite.getOriginY(),
                     netSprite.getWidth(), netSprite.getHeight(),
@@ -348,108 +360,32 @@ public class GameScreen implements Screen {
 
         if (drawDebug)
             debugRenderer.render(world, debugMatrix);
+    }
 
-        if (Gdx.input.isKeyJustPressed(Keys.ESCAPE)) {
-            if (state == State.RUN) {
-                setGameState(State.PAUSE);
-            }
-            else {
-                setGameState(State.RUN);
-            }
+    public void reset(Body whichHippo) {
+        // Move hippo back to starting position
+        rightHippo.setLinearVelocity(0f, 0f);
+        rightHippo.setAngularVelocity(0f);
+        rightHippo.setTransform(rightHippoSprite.getWidth()*4f/PIXELS_TO_METERS,-rightHippoSprite.getHeight()*5.1f/PIXELS_TO_METERS,0f);
+
+        leftHippo.setLinearVelocity(0f, 0f);
+        leftHippo.setAngularVelocity(0f);
+        leftHippo.setTransform(-leftHippoSprite.getWidth()*4f/PIXELS_TO_METERS,-leftHippoSprite.getHeight()*5.1f/PIXELS_TO_METERS,0f);
+
+        // If the game is paused, reset key states to avoid weird bugs
+        if (this.state == State.PAUSE) {
+            upHeld = false;
+            rightHeld = false;
+            leftHeld = false;
+
+            wHeld = false;
+            dHeld = false;
+            aHeld = false;
         }
 
-        // Implement pause/resume
-        switch (state) {
-            case RUN:
-                // process user input
-                    // When the user presses an arrow key, apply an initial force and enable additional
-                    // force to be added during the render loop
-                    if(Gdx.input.isKeyJustPressed(Keys.RIGHT)) {
-                        rightHippo.applyForceToCenter(HORIZONTAL_VELOCITY, 0f, true);
-                        rightHeld = true;
-                    }
-                    if(Gdx.input.isKeyJustPressed(Keys.LEFT)) {
-                        rightHippo.applyForceToCenter(-HORIZONTAL_VELOCITY, 0f,true);
-                        leftHeld = true;
-                    }
-                    if(Gdx.input.isKeyJustPressed(Keys.UP)) {
-                        // Only allow jumping if the rightHippo is actually touching the ground
-                        if (rightHippo.getLinearVelocity().y <= 1 && rightHippo.getLinearVelocity().y >= 0 /* && rightHippo.getPosition().y < -2 */ ) {
-                            rightHippo.applyForceToCenter(0f, JUMP_VELOCITY, true);
-                            rightJumpHeight = JUMP_VELOCITY;
-                            upHeld = true;
-                        }
-
-		/*
-		if(keycode == Input.Keys.DOWN) {
-			downHeld = true;
-		}
-		*/
-
-                    if(Gdx.input.isKeyJustPressed(Keys.D)) {
-                        leftHippo.applyForceToCenter(HORIZONTAL_VELOCITY, 0f, true);
-                        dHeld = true;
-                    }
-                    if(Gdx.input.isKeyJustPressed(Keys.A)) {
-                        leftHippo.applyForceToCenter(-HORIZONTAL_VELOCITY, 0f,true);
-                        aHeld = true;
-                    }
-                    if(Gdx.input.isKeyJustPressed(Keys.W)) {
-                        // Only allow jumping if the rightHippo is actually touching the ground
-                        if (leftHippo.getLinearVelocity().y <= 1 && leftHippo.getLinearVelocity().y >= 0 /* && leftHippo.getPosition().y < -2 */ ) {
-                            leftHippo.applyForceToCenter(0f, JUMP_VELOCITY, true);
-                            leftJumpHeight = JUMP_VELOCITY;
-                            wHeld = true;
-                        }
-                    }
-                    // When the user releases an arrow key, disable force during the render loop
-                    if(Gdx.input.isKeyJustPressed(Keys.RIGHT))
-                        rightHeld = false;
-                    if(Gdx.input.isKeyJustPressed(Keys.LEFT))
-                        leftHeld = false;
-                    if(Gdx.input.isKeyJustPressed(Keys.UP))
-                        upHeld = false;
-                    if(Gdx.input.isKeyJustPressed(Keys.DOWN))
-                        downHeld = false;
-
-                    if(Gdx.input.isKeyJustPressed(Keys.D))
-                        dHeld = false;
-                    if(Gdx.input.isKeyJustPressed(Keys.A))
-                        aHeld = false;
-                    if(Gdx.input.isKeyJustPressed(Keys.W))
-                        wHeld = false;
-                    if(Gdx.input.isKeyJustPressed(Keys.S))
-                        sHeld = false;
-
-                    // If user hits spacebar, reset everything back to normal
-                    if(Gdx.input.isKeyJustPressed(Keys.SPACE)|| Gdx.input.isKeyJustPressed(Keys.NUM_2)) {
-                        reset();
-                    }
-
-                    // Allow user to change ball restitution using comma and period keys
-                    if(Gdx.input.isKeyJustPressed(Keys.COMMA)) {
-                        ball.getFixtureList().first().setRestitution(ball.getFixtureList().first().getRestitution() - 0.1f);
-                    }
-                    if(Gdx.input.isKeyJustPressed(Keys.PERIOD)) {
-                        ball.getFixtureList().first().setRestitution(ball.getFixtureList().first().getRestitution()+0.1f);
-                    }
-                    if(Gdx.input.isKeyJustPressed(Keys.ESCAPE)) {
-                        drawSprite = !drawSprite;
-                        if (!drawDebug && !drawSprite)
-                            drawDebug = true;
-                    }
-                    if(Gdx.input.isKeyJustPressed(Keys.ENTER)) {
-                        drawDebug = !drawDebug;
-                        if (!drawDebug && !drawSprite)
-                            drawSprite = true;
-                    }
-
-                }
-                break;
-
-            case PAUSE:
-                break;
-        }// end switch
+        ball.setLinearVelocity(0f, 0f);
+        ball.setAngularVelocity(1f);
+        ball.setTransform(whichHippo.getPosition().x, whichHippo.getPosition().y*5f/PIXELS_TO_METERS,0f);
     }
 
     @Override
@@ -458,9 +394,6 @@ public class GameScreen implements Screen {
 
     @Override
     public void show() {
-        // start the playback of the background music
-        // when the screen is shown
-        //rainMusic.play();
     }
 
     @Override
@@ -469,14 +402,14 @@ public class GameScreen implements Screen {
 
     @Override
     public void pause() {
-        // Implement pause/resume
-        // this.state = State.PAUSE;
+        this.state = State.PAUSE;
+        isMovementAllowed = false;
     }
 
     @Override
     public void resume() {
-        // Implement pause/resume
-        // this.state = State.RUN;
+        this.state = State.RUN;
+        isMovementAllowed = true;
     }
 
     @Override
@@ -486,26 +419,123 @@ public class GameScreen implements Screen {
         world.dispose();
     }
 
-    // Implement pause/resume
-    public void setGameState(State s) {
-        this.state = s;
+    @Override
+    public boolean keyDown(int keycode) {
+        if (isMovementAllowed) {
+            // When the user presses an arrow key, apply an initial force and enable additional
+            // force to be added during the render loop
+            if (keycode == Input.Keys.RIGHT) {
+                rightHippo.applyForceToCenter(HORIZONTAL_VELOCITY, 0f, true);
+                rightHeld = true;
+            }
+            if (keycode == Input.Keys.LEFT) {
+                rightHippo.applyForceToCenter(-HORIZONTAL_VELOCITY, 0f, true);
+                leftHeld = true;
+            }
+            if (keycode == Input.Keys.UP) {
+                // Only allow jumping if the hippo is actually touching the ground
+                if (rightHippo.getLinearVelocity().y <= 1 && rightHippo.getLinearVelocity().y >= 0 && rightHippo.getPosition().y < -2) {
+                    rightHippo.applyForceToCenter(0f, JUMP_VELOCITY, true);
+                    rightJumpHeight = JUMP_VELOCITY;
+                    upHeld = true;
+                }
+            }
+
+            if (keycode == Input.Keys.D) {
+                leftHippo.applyForceToCenter(HORIZONTAL_VELOCITY, 0f, true);
+                dHeld = true;
+            }
+            if (keycode == Input.Keys.A) {
+                leftHippo.applyForceToCenter(-HORIZONTAL_VELOCITY, 0f, true);
+                aHeld = true;
+            }
+            if (keycode == Input.Keys.W) {
+                // Only allow jumping if the hippo is actually touching the ground
+                if (leftHippo.getLinearVelocity().y <= 1 && leftHippo.getLinearVelocity().y >= 0 && leftHippo.getPosition().y < -2) {
+                    leftHippo.applyForceToCenter(0f, JUMP_VELOCITY, true);
+                    leftJumpHeight = JUMP_VELOCITY;
+                    wHeld = true;
+                }
+            }
+        }
+        return true;
     }
 
-    public void reset() {
-        rightHippo.setLinearVelocity(0f, 0f);
-        rightHippo.setAngularVelocity(0f);
-        rightHippoSprite.setPosition(rightHippoSprite.getWidth()*4f,-rightHippoSprite.getHeight()*5.15f);
-        rightHippo.setTransform(rightHippoSprite.getWidth()*4f/PIXELS_TO_METERS,-rightHippoSprite.getHeight()*5.15f/PIXELS_TO_METERS,0f);
+    @Override
+    public boolean keyUp(int keycode) {
+        // When the user releases an arrow key, disable force during the render loop
+        if (keycode == Input.Keys.RIGHT)
+            rightHeld = false;
+        if (keycode == Input.Keys.LEFT)
+            leftHeld = false;
+        if (keycode == Input.Keys.UP)
+            upHeld = false;
 
-        leftHippo.setLinearVelocity(0f, 0f);
-        leftHippo.setAngularVelocity(0f);
-        leftHippoSprite.setPosition(-leftHippoSprite.getWidth()*4f,-leftHippoSprite.getHeight()*5.15f);
-        leftHippo.setTransform(-leftHippoSprite.getWidth()*4f/PIXELS_TO_METERS,-leftHippoSprite.getHeight()*5.15f/PIXELS_TO_METERS,0f);
+        if (keycode == Input.Keys.D)
+            dHeld = false;
+        if (keycode == Input.Keys.A)
+            aHeld = false;
+        if (keycode == Input.Keys.W)
+            wHeld = false;
 
-        ball.setLinearVelocity(0f, 0f);
-        ball.setAngularVelocity(1f);
-        ballSprite.setPosition(-rightHippoSprite.getWidth()*3.5f,rightHippoSprite.getHeight()/2f);
-        ball.setTransform(-rightHippoSprite.getWidth()*3.5f/PIXELS_TO_METERS,rightHippoSprite.getHeight()/2f/PIXELS_TO_METERS,0f);
+        // If user hits spacebar, reset everything back to normal
+        if(keycode == Input.Keys.SPACE|| keycode == Input.Keys.NUM_2) {
+            if (cycleToRight)
+                reset(rightHippo);
+            else
+                reset(leftHippo);
+            cycleToRight = !cycleToRight;
+        }
+
+        // Allow user to change ball restitution using comma and period keys
+        if(keycode == Input.Keys.COMMA) {
+            ball.getFixtureList().first().setRestitution(ball.getFixtureList().first().getRestitution() - 0.1f);
+        }
+        if(keycode == Input.Keys.PERIOD) {
+            ball.getFixtureList().first().setRestitution(ball.getFixtureList().first().getRestitution()+0.1f);
+        }
+        if(keycode == Input.Keys.ESCAPE) {
+            if (state == State.RUN)
+                pause();
+            else
+                resume();
+        }
+        if(keycode == Input.Keys.ENTER) {
+            drawDebug = !drawDebug;
+            if (!drawDebug && !drawSprite)
+                drawSprite = true;
+        }
+
+        return true;
+    }
+
+    @Override
+    public boolean keyTyped(char character) {
+        return false;
+    }
+
+    @Override
+    public boolean touchDown(int screenX, int screenY, int pointer, int button) {
+        return false;
+    }
+
+    @Override
+    public boolean touchUp(int screenX, int screenY, int pointer, int button) {
+        return false;
+    }
+
+    @Override
+    public boolean touchDragged(int screenX, int screenY, int pointer) {
+        return false;
+    }
+
+    @Override
+    public boolean mouseMoved(int screenX, int screenY) {
+        return false;
+    }
+
+    @Override
+    public boolean scrolled(int amount) {
+        return false;
     }
 }
-
