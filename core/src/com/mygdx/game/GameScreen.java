@@ -34,17 +34,29 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
     Matrix4 debugMatrix;
     OrthographicCamera camera;
     BitmapFont font;
-    float torque = 0.0f;
+
+    // Variables for handling hippo movement
     float rightJumpHeight = 0.0f;
     float leftJumpHeight = 0.0f;
     boolean isMovementAllowed = true; // Enable/disable player control for hippos
-    boolean cycleToRight = false; // Used for resetting the game state
     boolean upHeld = false, rightHeld = false, leftHeld = false,
             wHeld = false, dHeld = false, aHeld = false; // Tracking key states for hippo movement
+
+    // Variables for score handling and round transition
+    int leftScore = 0, rightScore = 0; // Tracking score for both players
+    int roundCount = 0; // Tracking number of rounds
+    boolean hasBallLanded = false; // If the ball has already landed once for the round, disregard any other times
+    boolean winningHippo; // Which hippo will serve next round? False = leftHippo, true = rightHippo
+    boolean isNextRoundStarting; // Do not allow players to pause/resume the game while this is true
+    float timeSinceLanding = 0f; // Time to wait until game state is paused and reset (players cannot pause/resume during this time)
+    float timeUntilStart; // Time to wait until game state is resumed (players cannot pause/resume during this time)
+
+    // Variables for game rendering
     boolean drawSprite = true, drawDebug = true;
 
     // Hippo calibrations
     final float HIPPO_DENSITY = 1.25f;
+    final float HIPPO_RESTITUTION = 0.0f; // No bounce on collision with the ground
     final float HORIZONTAL_VELOCITY = 25f; // Velocity when pressing or holding Left/Right or A/D
     final float MAX_HORIZONTAL_VELOCITY = 6.75f; // Max horizontal speed
     final float JUMP_VELOCITY = 100f; // Initial velocity when pressing Up or W
@@ -52,13 +64,17 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
     final float MAX_JUMP_HEIGHT = 400f; // Constraint to prevent hippos from perpetually floating up
 
     // Other calibrations
-    final float WALL_RESTITUTION = 0.5f;
+    final float BALL_DENSITY = 1.00f; // Less density than the hippos
+    final float BALL_RESTITUTION = 0.65f; // Unlike the hippos, the ball will bounce off everything
+    final float WALL_RESTITUTION = 0.5f; // Hippos and ball lose half of their velocity upon collision with walls
+    final float NET_RESTITUTION = 0.95f; // Hippos and ball will retain most of their velocity upon collision with the net
     final float NET_SCALE = 0.75f;
+    final float TIME_TO_NEXT_ROUND = 2f; // Wait 2 seconds after scoring to start next round
     final float PIXELS_TO_METERS = 100f;
 
     // Entity definitions
-    final short HIPPO_ENTITY = 0x1;
-    final short BALL_ENTITY = 0x1 << 1;
+    final short HIPPO_ENTITY = 0x1; // Hippos will not collide with each other
+    final short BALL_ENTITY = 0x1 << 1; // The ball collides with hippos and the world
     final short WORLD_ENTITY = 0x1 << 2;
 
     public GameScreen(final VolleyBall game) {
@@ -68,9 +84,9 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         hippoImg = new Texture("Hippo.png");
         ballImg = new Texture("volleyball.png");
         netImg = new Texture("Net.png");
-        leftHippoSprite = new Sprite(hippoImg);
+        leftHippoSprite = new Sprite(hippoImg); // Faces towards the right by default
         rightHippoSprite = new Sprite(hippoImg);
-        rightHippoSprite.flip(true,false); // Hippo will face towards the left
+        rightHippoSprite.flip(true,false); // Flip horizontally so the right hippo will face towards the left
         ballSprite = new Sprite(ballImg);
         netSprite = new Sprite(netImg);
 
@@ -79,8 +95,9 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
 
         world = new World(new Vector2(0, -15f),true);
 
+        // Begin body definitions
         /*
-            Creating the rightHippo body
+        //  RIGHT HIPPO BODY
         */
         BodyDef rightHippoBodyDef = new BodyDef();
         rightHippoBodyDef.type = BodyDef.BodyType.DynamicBody;
@@ -99,7 +116,7 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         FixtureDef rightHippoFixtureDef = new FixtureDef();
         rightHippoFixtureDef.shape = rightHippoShape;
         rightHippoFixtureDef.density = HIPPO_DENSITY;
-        rightHippoFixtureDef.restitution = 0.0f; // No bounce on collision with walls or floor
+        rightHippoFixtureDef.restitution = HIPPO_RESTITUTION;
         rightHippoFixtureDef.filter.categoryBits = HIPPO_ENTITY;
         rightHippoFixtureDef.filter.maskBits = BALL_ENTITY|WORLD_ENTITY;
 
@@ -107,7 +124,7 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         rightHippoShape.dispose();
 
         /*
-            Creating the leftHippo body
+        //  LEFT HIPPO BODY
         */
         BodyDef leftHippoBodyDef = new BodyDef();
         leftHippoBodyDef.type = BodyDef.BodyType.DynamicBody;
@@ -126,7 +143,7 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         FixtureDef leftHippoFixtureDef = new FixtureDef();
         leftHippoFixtureDef.shape = leftHippoShape;
         leftHippoFixtureDef.density = HIPPO_DENSITY;
-        leftHippoFixtureDef.restitution = 0.0f; // No bounce on collision with walls or floor
+        leftHippoFixtureDef.restitution = HIPPO_RESTITUTION;
         leftHippoFixtureDef.filter.categoryBits = HIPPO_ENTITY;
         leftHippoFixtureDef.filter.maskBits = BALL_ENTITY|WORLD_ENTITY;
 
@@ -134,7 +151,7 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         leftHippoShape.dispose();
 
         /*
-            Creating the ball body
+        //  BALL BODY
         */
         BodyDef ballBodyDef = new BodyDef();
         ballBodyDef.type = BodyDef.BodyType.DynamicBody;
@@ -148,8 +165,8 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
 
         FixtureDef ballFixtureDef = new FixtureDef();
         ballFixtureDef.shape = ballShape;
-        ballFixtureDef.density = 1.00f; // Less density than the rightHippo
-        ballFixtureDef.restitution = 0.65f; // Unlike the rightHippo, the ball should bounce off surfaces
+        ballFixtureDef.density = BALL_DENSITY;
+        ballFixtureDef.restitution = BALL_RESTITUTION;
         ballFixtureDef.filter.categoryBits = BALL_ENTITY;
         ballFixtureDef.filter.maskBits = HIPPO_ENTITY|WORLD_ENTITY;
 
@@ -157,7 +174,7 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         ballShape.dispose();
 
         /*
-            Creating the net body
+        //  NET BODY
         */
         BodyDef netBodyDef = new BodyDef();
         netBodyDef.type = BodyDef.BodyType.StaticBody;
@@ -172,15 +189,17 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
 
         FixtureDef netFixtureDef = new FixtureDef();
         netFixtureDef.shape = netShape;
-        netFixtureDef.restitution = 0.95f; // Hippos and ball will retain most of their velocity after collision
+        netFixtureDef.restitution = NET_RESTITUTION;
         netFixtureDef.filter.categoryBits = WORLD_ENTITY;
         netFixtureDef.filter.maskBits = BALL_ENTITY|HIPPO_ENTITY;
 
         net.createFixture(netFixtureDef);
         netShape.dispose();
+        // End body definitions
 
+        // Begin edge definitions
         /*
-            Defining the bottom edge of the screen
+        //  BOTTOM SCREEN EDGE
         */
         BodyDef bottomBodyDef = new BodyDef();
         bottomBodyDef.type = BodyDef.BodyType.StaticBody;
@@ -205,7 +224,7 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         h = Gdx.graphics.getHeight()/PIXELS_TO_METERS;
 
         /*
-            Top screen edge definition
+        //  TOP SCREEN EDGE
         */
         BodyDef topBodyDef = new BodyDef();
         topBodyDef.type = BodyDef.BodyType.StaticBody;
@@ -222,7 +241,7 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         topEdgeShape.dispose();
 
         /*
-            Left screen edge definition
+        //  LEFT SCREEN EDGE
         */
         BodyDef leftBodyDef = new BodyDef();
         leftBodyDef.type = BodyDef.BodyType.StaticBody;
@@ -240,7 +259,7 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         leftEdgeShape.dispose();
 
         /*
-            Right screen edge definition
+        //  RIGHT SCREEN EDGE
         */
         BodyDef rightBodyDef = new BodyDef();
         rightBodyDef.type = BodyDef.BodyType.StaticBody;
@@ -258,6 +277,39 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         rightEdgeShape.dispose();
         // End edge definitions
 
+        /*
+        //  BALL AND GROUND COLLISION
+        */
+        world.setContactListener(new ContactListener() {
+            @Override
+            public void beginContact(Contact contact) {
+                // Listen for when the ball lands on the ground
+                if ((contact.getFixtureA().getBody() == bottomEdge && contact.getFixtureB().getBody() == ball)
+                        ||
+                        (contact.getFixtureA().getBody() == ball && contact.getFixtureB().getBody() == bottomEdge)) {
+                    // If the ball has not landed for the current round, increment score
+                    if (!hasBallLanded) {
+                        if (ball.getPosition().x < 0) {
+                            rightScore++;
+                            winningHippo = true; // winningHippo means the right hippo has won the round
+                        } else if (ball.getPosition().x > 0) {
+                            leftScore++;
+                            winningHippo = false; // !winningHippo means the left hippo has won the round
+                        }
+                        hasBallLanded = true;
+                    }
+                }
+            }
+
+            // Ignore the rest of this
+            @Override
+            public void endContact(Contact contact) {}
+            @Override
+            public void preSolve(Contact contact, Manifold oldManifold) {}
+            @Override
+            public void postSolve(Contact contact, ContactImpulse impulse) {}
+        });
+
         Gdx.input.setInputProcessor(this);
 
         debugRenderer = new Box2DDebugRenderer();
@@ -265,6 +317,8 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         font.setColor(Color.BLACK);
         camera = new OrthographicCamera(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 
+        // Setup complete; initialize the game with right hippo on serve
+        pause();
         reset(rightHippo);
     }
 
@@ -272,6 +326,7 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
     public void render(float delta) {
         camera.update();
 
+        // Advance the game state if it's running, freeze the game state if it's paused
         switch (state) {
             case RUN:
                 // Step the physics simulation forward at a rate of 60hz
@@ -300,16 +355,22 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
                 break;
         } // End switch
 
+        // The rest of the code must stay outside of the switch structure,
+        // or else massive jittering occurs with the sprites while the game is paused
+
+        // Match the rightHippo sprite to the coordinates of its body
         rightHippoSprite.setPosition(
                 (rightHippo.getPosition().x * PIXELS_TO_METERS) - rightHippoSprite.getWidth()/2,
                 (rightHippo.getPosition().y * PIXELS_TO_METERS) - rightHippoSprite.getHeight()/2);
         rightHippoSprite.setRotation((float)Math.toDegrees(rightHippo.getAngle()));
 
+        // Match the leftHippo sprite to the coordinates of its body
         leftHippoSprite.setPosition(
                 (leftHippo.getPosition().x * PIXELS_TO_METERS) - leftHippoSprite.getWidth()/2,
                 (leftHippo.getPosition().y * PIXELS_TO_METERS) - leftHippoSprite.getHeight()/2);
         leftHippoSprite.setRotation((float)Math.toDegrees(leftHippo.getAngle()));
 
+        // Match the ball sprite to the coordinates of its body
         ballSprite.setPosition(
                 (ball.getPosition().x * PIXELS_TO_METERS) - ballSprite.getWidth() / 2,
                 (ball.getPosition().y * PIXELS_TO_METERS) - ballSprite.getHeight() / 2);
@@ -352,9 +413,41 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
                     netSprite.getRotation());
         }
 
+        // If the ball has landed, prepare to start next round
+        if (hasBallLanded) {
+            // Wait one second before pausing and resetting the game state
+            timeSinceLanding += delta;
+            if (timeSinceLanding >= TIME_TO_NEXT_ROUND/2) {
+                pause();
+                if (winningHippo)
+                    reset(rightHippo);
+                else
+                    reset(leftHippo);
+            }
+        }
+
+        // If we are preparing to start the next round
+        if (isNextRoundStarting) {
+            // Display round count at center of the screen
+            font.draw(batch, "Round " + roundCount, 0f, 0f);
+
+            // Countdown from 1 second to resume the game state
+            timeUntilStart -= delta;
+            if (timeUntilStart <= 0) {
+                isNextRoundStarting = false;
+                resume();
+            }
+        }
+
+        // Display the left player's score count at bottom left corner
         font.draw(batch,
-                "Ball restitution: " + ball.getFixtureList().first().getRestitution(),
-                -Gdx.graphics.getWidth() / 2, Gdx.graphics.getHeight() / 2);
+                "Left player score: " + leftScore,
+                -Gdx.graphics.getWidth() / 2 + 2.5f, -Gdx.graphics.getHeight() / 2 + 20);
+
+        // Display the right player's score count at bottom right corner
+        font.draw(batch,
+                "Right player score: " + rightScore,
+                Gdx.graphics.getWidth() / 2 - 145, -Gdx.graphics.getHeight() / 2 + 20);
 
         batch.end();
 
@@ -362,65 +455,9 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
             debugRenderer.render(world, debugMatrix);
     }
 
-    public void reset(Body whichHippo) {
-        // Move hippo back to starting position
-        rightHippo.setLinearVelocity(0f, 0f);
-        rightHippo.setAngularVelocity(0f);
-        rightHippo.setTransform(rightHippoSprite.getWidth()*4f/PIXELS_TO_METERS,-rightHippoSprite.getHeight()*5.1f/PIXELS_TO_METERS,0f);
-
-        leftHippo.setLinearVelocity(0f, 0f);
-        leftHippo.setAngularVelocity(0f);
-        leftHippo.setTransform(-leftHippoSprite.getWidth()*4f/PIXELS_TO_METERS,-leftHippoSprite.getHeight()*5.1f/PIXELS_TO_METERS,0f);
-
-        // If the game is paused, reset key states to avoid weird bugs
-        if (this.state == State.PAUSE) {
-            upHeld = false;
-            rightHeld = false;
-            leftHeld = false;
-
-            wHeld = false;
-            dHeld = false;
-            aHeld = false;
-        }
-
-        ball.setLinearVelocity(0f, 0f);
-        ball.setAngularVelocity(1f);
-        ball.setTransform(whichHippo.getPosition().x, whichHippo.getPosition().y*5f/PIXELS_TO_METERS,0f);
-    }
-
-    @Override
-    public void resize(int width, int height) {
-    }
-
-    @Override
-    public void show() {
-    }
-
-    @Override
-    public void hide() {
-    }
-
-    @Override
-    public void pause() {
-        this.state = State.PAUSE;
-        isMovementAllowed = false;
-    }
-
-    @Override
-    public void resume() {
-        this.state = State.RUN;
-        isMovementAllowed = true;
-    }
-
-    @Override
-    public void dispose() {
-        hippoImg.dispose();
-        ballImg.dispose();
-        world.dispose();
-    }
-
     @Override
     public boolean keyDown(int keycode) {
+        // Only acknowledge key usage when player movement is enabled
         if (isMovementAllowed) {
             // When the user presses an arrow key, apply an initial force and enable additional
             // force to be added during the render loop
@@ -478,26 +515,18 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         if (keycode == Input.Keys.W)
             wHeld = false;
 
-        // If user hits spacebar, reset everything back to normal
-        if(keycode == Input.Keys.SPACE|| keycode == Input.Keys.NUM_2) {
-            if (cycleToRight)
-                reset(rightHippo);
-            else
-                reset(leftHippo);
-            cycleToRight = !cycleToRight;
-        }
-
         // Allow user to change ball restitution using comma and period keys
         if(keycode == Input.Keys.COMMA) {
             ball.getFixtureList().first().setRestitution(ball.getFixtureList().first().getRestitution() - 0.1f);
         }
         if(keycode == Input.Keys.PERIOD) {
-            ball.getFixtureList().first().setRestitution(ball.getFixtureList().first().getRestitution()+0.1f);
+            ball.getFixtureList().first().setRestitution(ball.getFixtureList().first().getRestitution() + 0.1f);
         }
         if(keycode == Input.Keys.ESCAPE) {
-            if (state == State.RUN)
+            // Do not allow the players to pause or resume the game while it's transitioning between rounds
+            if (state == State.RUN && !hasBallLanded && !isNextRoundStarting)
                 pause();
-            else
+            else if (state == State.PAUSE && !hasBallLanded && !isNextRoundStarting)
                 resume();
         }
         if(keycode == Input.Keys.ENTER) {
@@ -505,37 +534,86 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
             if (!drawDebug && !drawSprite)
                 drawSprite = true;
         }
-
+        if(keycode == Input.Keys.SPACE) {
+            drawSprite = !drawSprite;
+            if (!drawDebug && !drawSprite)
+                drawDebug = true;
+        }
         return true;
     }
 
-    @Override
-    public boolean keyTyped(char character) {
-        return false;
+    public void reset(Body whichHippo) {
+        // Starting next round
+        timeUntilStart = TIME_TO_NEXT_ROUND/2;
+        isNextRoundStarting = true;
+        roundCount++;
+
+        // Move hippos back to their starting positions
+        rightHippo.setLinearVelocity(0f, 0f);
+        rightHippo.setAngularVelocity(0f);
+        rightHippo.setTransform(rightHippoSprite.getWidth()*4f/PIXELS_TO_METERS,-rightHippoSprite.getHeight()*5.1f/PIXELS_TO_METERS,0f);
+
+        leftHippo.setLinearVelocity(0f, 0f);
+        leftHippo.setAngularVelocity(0f);
+        leftHippo.setTransform(-leftHippoSprite.getWidth()*4f/PIXELS_TO_METERS,-leftHippoSprite.getHeight()*5.1f/PIXELS_TO_METERS,0f);
+
+        // If the game is paused, reset key states to avoid weird bugs
+        upHeld = false;
+        rightHeld = false;
+        leftHeld = false;
+
+        wHeld = false;
+        dHeld = false;
+        aHeld = false;
+
+        // Reset ball back to non-landed state and place it above the specified hippo
+        hasBallLanded = false;
+        timeSinceLanding = 0f;
+        ball.setLinearVelocity(0f, 0f);
+        ball.setAngularVelocity(1f);
+        ball.setTransform(whichHippo.getPosition().x, whichHippo.getPosition().y*5f/PIXELS_TO_METERS,0f);
     }
 
     @Override
-    public boolean touchDown(int screenX, int screenY, int pointer, int button) {
-        return false;
+    public void pause() {
+        this.state = State.PAUSE;
+        // Disable player movement inputs while game is paused
+        isMovementAllowed = false;
     }
 
     @Override
-    public boolean touchUp(int screenX, int screenY, int pointer, int button) {
-        return false;
+    public void resume() {
+        this.state = State.RUN;
+        isMovementAllowed = true;
     }
 
     @Override
-    public boolean touchDragged(int screenX, int screenY, int pointer) {
-        return false;
+    public void dispose() {
+        hippoImg.dispose();
+        ballImg.dispose();
+        netImg.dispose();
+        world.dispose();
     }
 
+    // Unused Screen functions
     @Override
-    public boolean mouseMoved(int screenX, int screenY) {
-        return false;
-    }
+    public void resize(int width, int height) {}
+    @Override
+    public void show() {}
+    @Override
+    public void hide() {}
 
+    // Unused InputProcessor functions
     @Override
-    public boolean scrolled(int amount) {
-        return false;
-    }
+    public boolean keyTyped(char character) { return false; }
+    @Override
+    public boolean touchDown(int screenX, int screenY, int pointer, int button) { return false; }
+    @Override
+    public boolean touchUp(int screenX, int screenY, int pointer, int button) { return false; }
+    @Override
+    public boolean touchDragged(int screenX, int screenY, int pointer) { return false; }
+    @Override
+    public boolean mouseMoved(int screenX, int screenY) { return false; }
+    @Override
+    public boolean scrolled(int amount) { return false; }
 }
