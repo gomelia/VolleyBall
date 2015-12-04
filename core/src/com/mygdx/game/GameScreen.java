@@ -34,6 +34,8 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
     Matrix4 debugMatrix;
     OrthographicCamera camera;
     BitmapFont font;
+    Texture background;
+    Sprite backgroundSprite;
 
     // Variables for handling hippo movement
     float rightJumpHeight = 0.0f;
@@ -89,6 +91,10 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         rightHippoSprite.flip(true,false); // Flip horizontally so the right hippo will face towards the left
         ballSprite = new Sprite(ballImg);
         netSprite = new Sprite(netImg);
+        background = new Texture("anime_style_background___beach_by_azuki_sato-d2zhqix.jpg");
+        backgroundSprite =new Sprite(background);
+        backgroundSprite.setBounds(0f, 0f, 1200f, 900f);
+        backgroundSprite.setCenter(0, 0);
 
         netSprite.setPosition(-netSprite.getWidth()/2,-525);
         netSprite.setScale(NET_SCALE);
@@ -322,6 +328,10 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         reset(rightHippo);
     }
 
+    public void renderBackground() {
+        backgroundSprite.draw(batch);
+    }
+
     @Override
     public void render(float delta) {
         camera.update();
@@ -382,6 +392,8 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         batch.setProjectionMatrix(camera.combined);
         debugMatrix = batch.getProjectionMatrix().cpy().scale(PIXELS_TO_METERS,	PIXELS_TO_METERS, 0);
         batch.begin();
+
+        renderBackground();
 
         if (drawSprite) {
             // Draw the rightHippo sprite
