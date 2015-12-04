@@ -94,7 +94,7 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         leftHippoSprite = new Sprite(hippoImg); // Faces towards the right by default
         leftHippoSprite.setScale(HIPPO_SCALE);
         rightHippoSprite = new Sprite(hippoImg);
-        rightHippoSprite.flip(true,false); // Flip horizontally so the right hippo will face towards the left
+        rightHippoSprite.flip(true,false); // Flip horizontally so the right hippo will face towards the left by default
         rightHippoSprite.setScale(HIPPO_SCALE);
         ballSprite = new Sprite(ballImg);
         netSprite = new Sprite(netImg);
@@ -335,8 +335,6 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         font = new BitmapFont();
         font.setColor(Color.BLACK);
         camera = new OrthographicCamera(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-
-        System.out.println(rightHippoFixtureDef.density);
 
         // Setup complete; initialize the game with right hippo on serve
         pause();
@@ -601,11 +599,11 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         // Move hippos back to their starting positions
         rightHippo.setLinearVelocity(0f, 0f);
         rightHippo.setAngularVelocity(0f);
-        rightHippo.setTransform(rightHippoSprite.getWidth()*4f/PIXELS_TO_METERS,-GameScreen.SCREEN_HEIGHT/PIXELS_TO_METERS/2 + rightHippoSprite.getHeight()/PIXELS_TO_METERS, 0f);
+        rightHippo.setTransform(rightHippoSprite.getWidth()*4f/PIXELS_TO_METERS,-GameScreen.SCREEN_HEIGHT/PIXELS_TO_METERS/2 + rightHippoSprite.getHeight()/PIXELS_TO_METERS + 0.26f, 0f);
 
         leftHippo.setLinearVelocity(0f, 0f);
         leftHippo.setAngularVelocity(0f);
-        leftHippo.setTransform(-leftHippoSprite.getWidth()*4f/PIXELS_TO_METERS,-GameScreen.SCREEN_HEIGHT/PIXELS_TO_METERS/2 + leftHippoSprite.getHeight()/PIXELS_TO_METERS, 0f);
+        leftHippo.setTransform(-leftHippoSprite.getWidth()*4f/PIXELS_TO_METERS,-GameScreen.SCREEN_HEIGHT/PIXELS_TO_METERS/2 + leftHippoSprite.getHeight()/PIXELS_TO_METERS + 0.26f, 0f);
 
         // If the game is paused, reset key states to avoid weird bugs
         upHeld = false;
