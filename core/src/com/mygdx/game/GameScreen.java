@@ -19,6 +19,8 @@ import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.TimeUtils;
 
 public class GameScreen extends ApplicationAdapter implements Screen, InputProcessor {
+    public static final int SCREEN_HEIGHT = 900;
+    public static final int SCREEN_WIDTH = 1200;
     final VolleyBall game;
 
     // Implement pause/resume
@@ -40,6 +42,7 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
     // Variables for handling hippo movement
     float rightJumpHeight = 0.0f;
     float leftJumpHeight = 0.0f;
+    boolean isRightHippoFlipped = true, isLeftHippoFlipped = false;
     boolean isMovementAllowed = true; // Enable/disable player control for hippos
     boolean upHeld = false, rightHeld = false, leftHeld = false,
             wHeld = false, dHeld = false, aHeld = false; // Tracking key states for hippo movement
@@ -57,12 +60,14 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
     boolean drawSprite = true, drawDebug = true;
 
     // Hippo calibrations
-    final float HIPPO_DENSITY = 1.25f;
+    final float HIPPO_SCALE = 2f;
+    final float HIPPO_DENSITY = 0.32f;
     final float HIPPO_RESTITUTION = 0.0f; // No bounce on collision with the ground
-    final float HORIZONTAL_VELOCITY = 25f; // Velocity when pressing or holding Left/Right or A/D
+    final float HIPPO_FRICTION = 50f;
+    final float HORIZONTAL_VELOCITY = 50f*HIPPO_SCALE*HIPPO_SCALE; // Velocity when pressing or holding Left/Right or A/D
     final float MAX_HORIZONTAL_VELOCITY = 6.75f; // Max horizontal speed
-    final float JUMP_VELOCITY = 100f; // Initial velocity when pressing Up or W
-    final float JUMP_HOLD_VELOCITY = 75f; // Incremental velocity when holding Up or W
+    final float JUMP_VELOCITY = 100f*HIPPO_SCALE*HIPPO_SCALE; // Initial velocity when pressing Up or W
+    final float JUMP_HOLD_VELOCITY = 75f*HIPPO_SCALE*HIPPO_SCALE; // Incremental velocity when holding Up or W
     final float MAX_JUMP_HEIGHT = 400f; // Constraint to prevent hippos from perpetually floating up
 
     // Other calibrations
@@ -87,8 +92,10 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         ballImg = new Texture("volleyball.png");
         netImg = new Texture("Net.png");
         leftHippoSprite = new Sprite(hippoImg); // Faces towards the right by default
+        leftHippoSprite.setScale(HIPPO_SCALE);
         rightHippoSprite = new Sprite(hippoImg);
         rightHippoSprite.flip(true,false); // Flip horizontally so the right hippo will face towards the left
+        rightHippoSprite.setScale(HIPPO_SCALE);
         ballSprite = new Sprite(ballImg);
         netSprite = new Sprite(netImg);
         background = new Texture("anime_style_background___beach_by_azuki_sato-d2zhqix.jpg");
@@ -116,12 +123,13 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         rightHippo.setFixedRotation(true);
 
         PolygonShape rightHippoShape = new PolygonShape();
-        rightHippoShape.setAsBox(rightHippoSprite.getWidth()/2 / PIXELS_TO_METERS,
-                rightHippoSprite.getHeight()/2 / PIXELS_TO_METERS);
+        rightHippoShape.setAsBox(rightHippoSprite.getWidth()*HIPPO_SCALE / 2 / PIXELS_TO_METERS,
+                rightHippoSprite.getHeight()*HIPPO_SCALE / 2 / PIXELS_TO_METERS);
 
         FixtureDef rightHippoFixtureDef = new FixtureDef();
         rightHippoFixtureDef.shape = rightHippoShape;
         rightHippoFixtureDef.density = HIPPO_DENSITY;
+        rightHippoFixtureDef.friction = HIPPO_FRICTION;
         rightHippoFixtureDef.restitution = HIPPO_RESTITUTION;
         rightHippoFixtureDef.filter.categoryBits = HIPPO_ENTITY;
         rightHippoFixtureDef.filter.maskBits = BALL_ENTITY|WORLD_ENTITY;
@@ -143,12 +151,13 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         leftHippo.setFixedRotation(true);
 
         PolygonShape leftHippoShape = new PolygonShape();
-        leftHippoShape.setAsBox(leftHippoSprite.getWidth()/2 / PIXELS_TO_METERS,
-                leftHippoSprite.getHeight()/2 / PIXELS_TO_METERS);
+        leftHippoShape.setAsBox(leftHippoSprite.getWidth()*HIPPO_SCALE / 2 / PIXELS_TO_METERS,
+                leftHippoSprite.getHeight()*HIPPO_SCALE / 2 / PIXELS_TO_METERS);
 
         FixtureDef leftHippoFixtureDef = new FixtureDef();
         leftHippoFixtureDef.shape = leftHippoShape;
         leftHippoFixtureDef.density = HIPPO_DENSITY;
+        leftHippoFixtureDef.friction = HIPPO_FRICTION;
         leftHippoFixtureDef.restitution = HIPPO_RESTITUTION;
         leftHippoFixtureDef.filter.categoryBits = HIPPO_ENTITY;
         leftHippoFixtureDef.filter.maskBits = BALL_ENTITY|WORLD_ENTITY;
@@ -196,6 +205,7 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         FixtureDef netFixtureDef = new FixtureDef();
         netFixtureDef.shape = netShape;
         netFixtureDef.restitution = NET_RESTITUTION;
+        netFixtureDef.friction = 0f;
         netFixtureDef.filter.categoryBits = WORLD_ENTITY;
         netFixtureDef.filter.maskBits = BALL_ENTITY|HIPPO_ENTITY;
 
@@ -258,6 +268,7 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         EdgeShape leftEdgeShape = new EdgeShape();
         leftFixtureDef.shape = leftEdgeShape;
         leftFixtureDef.restitution = WALL_RESTITUTION;
+        leftFixtureDef.friction = 0f;
         leftEdgeShape.set(-w/2,-h/2,-w/2,h/2);
 
         leftEdge = world.createBody(leftBodyDef);
@@ -276,6 +287,7 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         EdgeShape rightEdgeShape = new EdgeShape();
         rightFixtureDef.shape = rightEdgeShape;
         rightFixtureDef.restitution = WALL_RESTITUTION;
+        rightFixtureDef.friction = 0f;
         rightEdgeShape.set(w/2,h/2,w/2,-h/2);
 
         rightEdge = world.createBody(rightBodyDef);
@@ -290,6 +302,7 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
             @Override
             public void beginContact(Contact contact) {
                 // Listen for when the ball lands on the ground
+                // Since we don't know if A/B will be the ball or the edge, we must include comparisons for both ways
                 if ((contact.getFixtureA().getBody() == bottomEdge && contact.getFixtureB().getBody() == ball)
                         ||
                         (contact.getFixtureA().getBody() == ball && contact.getFixtureB().getBody() == bottomEdge)) {
@@ -322,6 +335,8 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         font = new BitmapFont();
         font.setColor(Color.BLACK);
         camera = new OrthographicCamera(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+
+        System.out.println(rightHippoFixtureDef.density);
 
         // Setup complete; initialize the game with right hippo on serve
         pause();
@@ -427,6 +442,11 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
 
         // If the ball has landed, prepare to start next round
         if (hasBallLanded) {
+            if (winningHippo)
+                font.draw(batch, "Right player scores!", 0f, 0f);
+            else
+                font.draw(batch, "Left player scores!", 0f, 0f);
+
             // Wait one second before pausing and resetting the game state
             timeSinceLanding += delta;
             if (timeSinceLanding >= TIME_TO_NEXT_ROUND/2) {
@@ -450,6 +470,8 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
                 resume();
             }
         }
+        else if (this.state == State.PAUSE)
+            font.draw(batch, "Paused", 0f, 0f);
 
         // Display the left player's score count at bottom left corner
         font.draw(batch,
@@ -475,10 +497,18 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
             // force to be added during the render loop
             if (keycode == Input.Keys.RIGHT) {
                 rightHippo.applyForceToCenter(HORIZONTAL_VELOCITY, 0f, true);
+                if (isRightHippoFlipped) {
+                    rightHippoSprite.flip(true, false);
+                    isRightHippoFlipped = false;
+                }
                 rightHeld = true;
             }
             if (keycode == Input.Keys.LEFT) {
                 rightHippo.applyForceToCenter(-HORIZONTAL_VELOCITY, 0f, true);
+                if (!isRightHippoFlipped) {
+                    rightHippoSprite.flip(true, false);
+                    isRightHippoFlipped = true;
+                }
                 leftHeld = true;
             }
             if (keycode == Input.Keys.UP) {
@@ -492,10 +522,18 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
 
             if (keycode == Input.Keys.D) {
                 leftHippo.applyForceToCenter(HORIZONTAL_VELOCITY, 0f, true);
+                if (isLeftHippoFlipped) {
+                    leftHippoSprite.flip(true, false);
+                    isLeftHippoFlipped = false;
+                }
                 dHeld = true;
             }
             if (keycode == Input.Keys.A) {
                 leftHippo.applyForceToCenter(-HORIZONTAL_VELOCITY, 0f, true);
+                if (!isLeftHippoFlipped) {
+                    leftHippoSprite.flip(true, false);
+                    isLeftHippoFlipped = true;
+                }
                 aHeld = true;
             }
             if (keycode == Input.Keys.W) {
@@ -563,11 +601,11 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         // Move hippos back to their starting positions
         rightHippo.setLinearVelocity(0f, 0f);
         rightHippo.setAngularVelocity(0f);
-        rightHippo.setTransform(rightHippoSprite.getWidth()*4f/PIXELS_TO_METERS,-rightHippoSprite.getHeight()*5.1f/PIXELS_TO_METERS,0f);
+        rightHippo.setTransform(rightHippoSprite.getWidth()*4f/PIXELS_TO_METERS,-GameScreen.SCREEN_HEIGHT/PIXELS_TO_METERS/2 + rightHippoSprite.getHeight()/PIXELS_TO_METERS, 0f);
 
         leftHippo.setLinearVelocity(0f, 0f);
         leftHippo.setAngularVelocity(0f);
-        leftHippo.setTransform(-leftHippoSprite.getWidth()*4f/PIXELS_TO_METERS,-leftHippoSprite.getHeight()*5.1f/PIXELS_TO_METERS,0f);
+        leftHippo.setTransform(-leftHippoSprite.getWidth()*4f/PIXELS_TO_METERS,-GameScreen.SCREEN_HEIGHT/PIXELS_TO_METERS/2 + leftHippoSprite.getHeight()/PIXELS_TO_METERS, 0f);
 
         // If the game is paused, reset key states to avoid weird bugs
         upHeld = false;
