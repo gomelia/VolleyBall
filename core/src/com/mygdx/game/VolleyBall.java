@@ -15,9 +15,14 @@ import com.badlogic.gdx.physics.box2d.*;
 import com.badlogic.gdx.physics.box2d.PolygonShape;
 
 public class VolleyBall extends Game {
+	public static final int SCREEN_HEIGHT = 900;
+	public static final int SCREEN_WIDTH = 1200;
 
 	public SpriteBatch batch;
 	public BitmapFont font;
+
+	public static int scoreToWin = 5; // 15 by default
+	public static int scoreMargin = 2; // How many points the leading player should have before winning the game; 2 by default
 
 	public void create() {
 		batch = new SpriteBatch();

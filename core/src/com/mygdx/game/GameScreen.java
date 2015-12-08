@@ -19,8 +19,6 @@ import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.TimeUtils;
 
 public class GameScreen extends ApplicationAdapter implements Screen, InputProcessor {
-    public static final int SCREEN_HEIGHT = 900;
-    public static final int SCREEN_WIDTH = 1200;
     final VolleyBall game;
 
     // Implement pause/resume
@@ -51,8 +49,9 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
     int leftScore = 0, rightScore = 0; // Tracking score for both players
     int roundCount = 0; // Tracking number of rounds
     boolean hasBallLanded = false; // If the ball has already landed once for the round, disregard any other times
-    boolean winningHippo; // Which hippo will serve next round? False = leftHippo, true = rightHippo
+    boolean scoringHippo; // Which hippo will serve next round? False = leftHippo, true = rightHippo
     boolean isNextRoundStarting; // Do not allow players to pause/resume the game while this is true
+    boolean rightWin = false, leftWin = false; // Which hippo has won the game?
     float timeSinceLanding = 0f; // Time to wait until game state is paused and reset (players cannot pause/resume during this time)
     float timeUntilStart; // Time to wait until game state is resumed (players cannot pause/resume during this time)
 
@@ -60,19 +59,20 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
     boolean drawSprite = true, drawDebug = true;
 
     // Hippo calibrations
-    final float HIPPO_SCALE = 2f;
-    final float HIPPO_DENSITY = 0.32f;
+    final float HIPPO_SCALE = 1.5f; // Decides the size of the hippo; density and velocity variables are scaled by this value
+    final float HIPPO_DENSITY = (float)Math.pow(1.25f, HIPPO_SCALE);
     final float HIPPO_RESTITUTION = 0.0f; // No bounce on collision with the ground
     final float HIPPO_FRICTION = 50f;
-    final float HORIZONTAL_VELOCITY = 50f*HIPPO_SCALE*HIPPO_SCALE; // Velocity when pressing or holding Left/Right or A/D
+    final float HORIZONTAL_VELOCITY = (float)Math.pow(50f, HIPPO_SCALE);
+            //50f*HIPPO_SCALE + 50f*HIPPO_SCALE; // Velocity when pressing or holding Left/Right or A/D
     final float MAX_HORIZONTAL_VELOCITY = 6.75f; // Max horizontal speed
-    final float JUMP_VELOCITY = 100f*HIPPO_SCALE*HIPPO_SCALE; // Initial velocity when pressing Up or W
-    final float JUMP_HOLD_VELOCITY = 75f*HIPPO_SCALE*HIPPO_SCALE; // Incremental velocity when holding Up or W
+    final float JUMP_VELOCITY = (float)Math.pow(100f, HIPPO_SCALE); // Initial velocity when pressing Up or W
+    final float JUMP_HOLD_VELOCITY = (float)Math.pow(75f, HIPPO_SCALE); // Incremental velocity when holding Up or W
     final float MAX_JUMP_HEIGHT = 400f; // Constraint to prevent hippos from perpetually floating up
 
     // Other calibrations
-    final float BALL_DENSITY = 1.00f; // Less density than the hippos
-    final float BALL_RESTITUTION = 0.65f; // Unlike the hippos, the ball will bounce off everything
+    final float BALL_DENSITY = (float)Math.pow(1.00f, HIPPO_SCALE); // Less density than the hippos
+    final float BALL_RESTITUTION = 0.4f; // Unlike the hippos, the ball will bounce off everything
     final float WALL_RESTITUTION = 0.5f; // Hippos and ball lose half of their velocity upon collision with walls
     final float NET_RESTITUTION = 0.95f; // Hippos and ball will retain most of their velocity upon collision with the net
     final float NET_SCALE = 0.75f;
@@ -231,6 +231,7 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         EdgeShape bottomEdgeShape = new EdgeShape();
         bottomFixtureDef.shape = bottomEdgeShape;
         bottomEdgeShape.set(-w/2,-h/2,w/2,-h/2);
+        System.out.println(Gdx.graphics.getHeight()/PIXELS_TO_METERS- 50/PIXELS_TO_METERS);
 
         bottomEdge = world.createBody(bottomBodyDef);
         bottomEdge.createFixture(bottomFixtureDef);
@@ -310,12 +311,21 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
                     if (!hasBallLanded) {
                         if (ball.getPosition().x < 0) {
                             rightScore++;
-                            winningHippo = true; // winningHippo means the right hippo has won the round
+                            scoringHippo = true; // scoringHippo means the right hippo has won the round
                         } else if (ball.getPosition().x > 0) {
                             leftScore++;
-                            winningHippo = false; // !winningHippo means the left hippo has won the round
+                            scoringHippo = false; // !scoringHippo means the left hippo has won the round
                         }
-                        hasBallLanded = true;
+                        // If one of the players has scored enough points to win, and they have a sufficient margin lead
+                        if (rightScore >= VolleyBall.scoreToWin && rightScore - leftScore >= VolleyBall.scoreMargin) {
+                            rightWin = true;
+                        }
+                        else if (leftScore >= VolleyBall.scoreToWin && leftScore - rightScore >= VolleyBall.scoreMargin) {
+                            leftWin = true;
+                        }
+                        
+                        // Ball has landed; game will take action in the render loop
+                        hasBallLanded = true;                        
                     }
                 }
             }
@@ -374,8 +384,11 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
                     leftJumpHeight = leftJumpHeight + JUMP_HOLD_VELOCITY;
                 }
                 break; // End RESUME case
+            case FINISHED:
+                break;
             case PAUSE:
                 break;
+
         } // End switch
 
         // The rest of the code must stay outside of the switch structure,
@@ -438,21 +451,42 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
                     netSprite.getRotation());
         }
 
-        // If the ball has landed, prepare to start next round
+        // If the ball has landed, prepare to start next round or end the game
         if (hasBallLanded) {
-            if (winningHippo)
-                font.draw(batch, "Right player scores!", 0f, 0f);
-            else
-                font.draw(batch, "Left player scores!", 0f, 0f);
-
-            // Wait one second before pausing and resetting the game state
-            timeSinceLanding += delta;
-            if (timeSinceLanding >= TIME_TO_NEXT_ROUND/2) {
-                pause();
-                if (winningHippo)
-                    reset(rightHippo);
+            // If the right hippo has won the game
+            if (rightWin) {
+                font.draw(batch, "Right player wins the game! (Click anywhere to exit)", 0f, 0f);
+                this.state = State.FINISHED;
+            }
+            // If the left hippo has won the game
+            else if (leftWin) {
+                font.draw(batch, "Left player wins the game! (Click anywhere to exit)", 0f, 0f);
+                this.state = State.FINISHED;
+            }
+            // Neither hippo has won the game yet
+            else {
+                if (scoringHippo)
+                    font.draw(batch, "Right player scores!", 0f, 0f);
                 else
-                    reset(leftHippo);
+                    font.draw(batch, "Left player scores!", 0f, 0f);
+
+                // Wait one second before pausing and resetting the game state
+                timeSinceLanding += delta;
+                if (timeSinceLanding >= TIME_TO_NEXT_ROUND / 2) {
+                    pause();
+                    if (scoringHippo)
+                        reset(rightHippo);
+                    else
+                        reset(leftHippo);
+                }
+            }
+        }
+
+        // If the game is finished, wait for the user to click to return to main menu
+        if (Gdx.input.isTouched()) {
+            if (this.state == State.FINISHED) {
+                game.setScreen(new MainMenuScreen(game));
+                dispose();
             }
         }
 
@@ -596,14 +630,16 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         isNextRoundStarting = true;
         roundCount++;
 
+
+
         // Move hippos back to their starting positions
         rightHippo.setLinearVelocity(0f, 0f);
         rightHippo.setAngularVelocity(0f);
-        rightHippo.setTransform(rightHippoSprite.getWidth()*4f/PIXELS_TO_METERS,-GameScreen.SCREEN_HEIGHT/PIXELS_TO_METERS/2 + rightHippoSprite.getHeight()/PIXELS_TO_METERS + 0.26f, 0f);
+        rightHippo.setTransform(rightHippoSprite.getWidth()*4f/PIXELS_TO_METERS,-VolleyBall.SCREEN_HEIGHT/PIXELS_TO_METERS/2 + rightHippoSprite.getHeight()/PIXELS_TO_METERS + 0.26f, 0f);
 
         leftHippo.setLinearVelocity(0f, 0f);
         leftHippo.setAngularVelocity(0f);
-        leftHippo.setTransform(-leftHippoSprite.getWidth()*4f/PIXELS_TO_METERS,-GameScreen.SCREEN_HEIGHT/PIXELS_TO_METERS/2 + leftHippoSprite.getHeight()/PIXELS_TO_METERS + 0.26f, 0f);
+        leftHippo.setTransform(-leftHippoSprite.getWidth()*4f/PIXELS_TO_METERS,-VolleyBall.SCREEN_HEIGHT/PIXELS_TO_METERS/2 + leftHippoSprite.getHeight()/PIXELS_TO_METERS /*+ 0.26f*/, 0f);
 
         // If the game is paused, reset key states to avoid weird bugs
         upHeld = false;
