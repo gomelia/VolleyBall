@@ -38,7 +38,7 @@ public class MainMenuScreen implements Screen {
         if (Gdx.input.isTouched()) {
             game.setScreen(gameScreen);
             if (gameScreen.leftWin || gameScreen.rightWin)
-                gameScreen.startNewGame();
+                gameScreen.startNewGame(gameScreen.rightHippo);
             dispose();
         }
     }
