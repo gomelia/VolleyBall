@@ -21,7 +21,7 @@ public class MainMenuScreen implements Screen {
 
         camera = new OrthographicCamera();
         camera.setToOrtho(false, 800, 480);
-        gameMusic = Gdx.audio.newSound(Gdx.files.internal("Sumo - Volleyball.mp3"));
+        gameMusic = Gdx.audio.newSound(Gdx.files.internal("Sumo_music.mp3"));
         gameMusic.play();
     }
 
