@@ -2,27 +2,21 @@ package com.mygdx.game;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
-import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 
-public class MainMenuScreen implements Screen {
+public class InstructionScreen implements Screen {
 
     final VolleyBall game;
-    GameScreen gameScreen = null;
-    Sound gameMusic;
 
     OrthographicCamera camera;
+    MainMenuScreen mms;
 
-
-
-    public MainMenuScreen(final VolleyBall game) {
+    public InstructionScreen(final VolleyBall game) {
         this.game = game;
 
         camera = new OrthographicCamera();
         camera.setToOrtho(false, 800, 480);
-        gameMusic = Gdx.audio.newSound(Gdx.files.internal("Sumo_music.mp3"));
-        gameMusic.play();
     }
 
     @Override
@@ -38,17 +32,10 @@ public class MainMenuScreen implements Screen {
         game.font.draw(game.batch, "Tap anywhere to begin!", 100, 100);
         game.batch.end();
 
-        if (gameScreen == null)
-            gameScreen = new GameScreen(game, this);
-
         if (Gdx.input.isTouched()) {
-            game.setScreen(gameScreen);
-            if (gameScreen.leftWin || gameScreen.rightWin)
-                gameScreen.startNewGame();
+            game.setScreen(new GameScreen(game, mms));
             dispose();
         }
-
-
     }
 
     @Override
