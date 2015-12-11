@@ -365,7 +365,7 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
                                 wavSound4.play();
                             }
 
-                    wavSound5.play();
+                    //wavSound5.play();
                 }
                 else if ((contact.getFixtureA().getBody() == leftHippo && contact.getFixtureB().getBody() == ball)
                         ||
