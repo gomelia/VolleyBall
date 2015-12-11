@@ -8,8 +8,8 @@ import com.mygdx.game.VolleyBall;
 public class DesktopLauncher {
 	public static void main (String[] arg) {
 		LwjglApplicationConfiguration config = new LwjglApplicationConfiguration();
-		config.width = GameScreen.SCREEN_WIDTH;
-		config.height = GameScreen.SCREEN_HEIGHT;
+		config.width = VolleyBall.SCREEN_WIDTH;
+		config.height = VolleyBall.SCREEN_HEIGHT;
 		new LwjglApplication(new VolleyBall(), config);
 	}
 }

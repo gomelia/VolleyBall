@@ -34,6 +34,9 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
     Matrix4 debugMatrix;
     OrthographicCamera camera;
     BitmapFont font;
+    Sound wavSound1, wavSound2, wavSound3, wavSound4,wavSound5 ;
+    MathUtils rand;
+
     Texture background;
     Sprite backgroundSprite;
 
@@ -102,6 +105,15 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         backgroundSprite =new Sprite(background);
         backgroundSprite.setBounds(0f, 0f, 1200f, 900f);
         backgroundSprite.setCenter(0, 0);
+
+        wavSound1 = Gdx.audio.newSound(Gdx.files.internal("bgrunt.wav"));
+        wavSound2 = Gdx.audio.newSound(Gdx.files.internal("w1.wav"));
+        wavSound3 = Gdx.audio.newSound(Gdx.files.internal("w2.wav"));
+        wavSound4 = Gdx.audio.newSound(Gdx.files.internal("chew_roar.mp3"));
+        //wavSound5 = Gdx.audio.newSound(Gdx.files.internal("SERVE.WAV"));
+
+
+
 
         netSprite.setPosition(-netSprite.getWidth()/2,-525);
         netSprite.setScale(NET_SCALE);
@@ -327,6 +339,59 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
                         // Ball has landed; game will take action in the render loop
                         hasBallLanded = true;                        
                     }
+                }
+                    /*
+         //Hippo Contact with ball plays a sound
+         */
+                if ((contact.getFixtureA().getBody() == rightHippo && contact.getFixtureB().getBody() == ball)
+                        ||
+                        (contact.getFixtureA().getBody() == ball && contact.getFixtureB().getBody() == rightHippo)) {
+                    // If the ball has not landed for the current round, increment score
+                    int rnum = rand.random(0, 3);
+                            if(rnum == 0)
+                            {
+                                wavSound1.play();
+                            }
+                            else if(rnum == 1)
+                            {
+                                wavSound2.play();
+                            }
+                            else if(rnum == 2)
+                            {
+                                wavSound3.play();
+                            }
+                            else if(rnum == 3)
+                            {
+                                wavSound4.play();
+                            }
+
+                    wavSound5.play();
+                }
+                else if ((contact.getFixtureA().getBody() == leftHippo && contact.getFixtureB().getBody() == ball)
+                        ||
+                        (contact.getFixtureA().getBody() == ball && contact.getFixtureB().getBody() == leftHippo)) {
+                    // If the ball has not landed for the current round, increment score
+
+                    wavSound2.play();
+                    int rnum = rand.random(0, 3);
+                    if(rnum == 0)
+                    {
+                        wavSound1.play();
+                    }
+                    else if(rnum == 1)
+                    {
+                        wavSound2.play();
+                    }
+                    else if(rnum == 2)
+                    {
+                        wavSound3.play();
+                    }
+                    else if(rnum == 3)
+                    {
+                        wavSound4.play();
+                    }
+
+
                 }
             }
 
