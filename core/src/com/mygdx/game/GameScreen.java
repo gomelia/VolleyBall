@@ -36,13 +36,13 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
     OrthographicCamera camera;
     BitmapFont font;
     Sound wavSound1, wavSound2, wavSound3, wavSound4, wavSound5;
-    MathUtils rand;
     Texture background;
     Sprite backgroundSprite;
 
     // Variables for handling hippo movement
     float rightJumpHeight = 0.0f;
     float leftJumpHeight = 0.0f;
+    boolean isRightHippoAirborne, isLeftHippoAirborne;
     boolean isRightHippoFlipped = true, isLeftHippoFlipped = false;
     boolean isMovementAllowed = true; // Enable/disable player control for hippos
     boolean upHeld = false, rightHeld = false, leftHeld = false,
@@ -186,7 +186,7 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
                         (contact.getFixtureA().getBody() == leftHippo && contact.getFixtureB().getBody() == ball)
                         ||
                         (contact.getFixtureA().getBody() == ball && contact.getFixtureB().getBody() == leftHippo)) {
-                    int rnum = rand.random(0, 3);
+                    int rnum = MathUtils.random(0, 3);
                     if(rnum == 0)
                     {
                         wavSound1.play();
@@ -206,11 +206,32 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
 
                     //wavSound5.play();
                 }
+
+                // This controls jumping; when the hippos touch the ground, mark them as NOT airborne
+                if ((contact.getFixtureA().getBody() == rightHippo && contact.getFixtureB().getBody() == bottomEdge)
+                        ||
+                        (contact.getFixtureA().getBody() == bottomEdge && contact.getFixtureB().getBody() == rightHippo))
+                    isRightHippoAirborne = false;
+                else if ((contact.getFixtureA().getBody() == leftHippo && contact.getFixtureB().getBody() == bottomEdge)
+                        ||
+                        (contact.getFixtureA().getBody() == bottomEdge && contact.getFixtureB().getBody() == leftHippo))
+                    isLeftHippoAirborne = false;
+            }
+
+            @Override
+            public void endContact(Contact contact) {
+                // This controls jumping; when the hippos leave the ground, mark them as airborne
+                if ((contact.getFixtureA().getBody() == rightHippo && contact.getFixtureB().getBody() == bottomEdge)
+                        ||
+                        (contact.getFixtureA().getBody() == bottomEdge && contact.getFixtureB().getBody() == rightHippo))
+                    isRightHippoAirborne = true;
+                else if ((contact.getFixtureA().getBody() == leftHippo && contact.getFixtureB().getBody() == bottomEdge)
+                        ||
+                        (contact.getFixtureA().getBody() == bottomEdge && contact.getFixtureB().getBody() == leftHippo))
+                    isLeftHippoAirborne = true;
             }
 
             // Ignore the rest of this
-            @Override
-            public void endContact(Contact contact) {}
             @Override
             public void preSolve(Contact contact, Manifold oldManifold) {}
             @Override
@@ -225,7 +246,7 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         camera = new OrthographicCamera(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 
         // Setup complete; initialize the game with right hippo on serve
-        startNewGame();
+        startNewGame(rightHippo);
     }
 
     @Override
@@ -398,7 +419,7 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
             }
             if (keycode == Input.Keys.UP) {
                 // Only allow jumping if the hippo is actually touching the ground
-                if (rightHippo.getLinearVelocity().y <= 1 && rightHippo.getLinearVelocity().y >= 0 && rightHippo.getPosition().y < -2) {
+                if (!isRightHippoAirborne) {
                     rightHippo.applyForceToCenter(0f, JUMP_VELOCITY, true);
                     rightJumpHeight = JUMP_VELOCITY;
                     upHeld = true;
@@ -423,7 +444,7 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
             }
             if (keycode == Input.Keys.W) {
                 // Only allow jumping if the hippo is actually touching the ground
-                if (leftHippo.getLinearVelocity().y <= 1 && leftHippo.getLinearVelocity().y >= 0 && leftHippo.getPosition().y < -2) {
+                if (!isLeftHippoAirborne) {
                     leftHippo.applyForceToCenter(0f, JUMP_VELOCITY, true);
                     leftJumpHeight = JUMP_VELOCITY;
                     wHeld = true;
@@ -605,14 +626,14 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         ball.setTransform(whichHippo.getPosition().x, whichHippo.getPosition().y*5f/PIXELS_TO_METERS,0f);
     }
 
-    public void startNewGame() {
+    public void startNewGame(Body whichHippo) {
         pause();
         leftScore = 0;
         rightScore = 0;
         leftWin = false;
         rightWin = false;
         roundCount = 0;
-        startNewRound(rightHippo);
+        startNewRound(whichHippo);
     }
 
     @Override
