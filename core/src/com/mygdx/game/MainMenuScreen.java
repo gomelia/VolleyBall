@@ -8,6 +8,7 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 public class MainMenuScreen implements Screen {
 
     final VolleyBall game;
+    GameScreen gameScreen = null;
 
     OrthographicCamera camera;
 
@@ -31,8 +32,13 @@ public class MainMenuScreen implements Screen {
         game.font.draw(game.batch, "Tap anywhere to begin!", 100, 100);
         game.batch.end();
 
+        if (gameScreen == null)
+            gameScreen = new GameScreen(game, this);
+
         if (Gdx.input.isTouched()) {
-            game.setScreen(new GameScreen(game));
+            game.setScreen(gameScreen);
+            if (gameScreen.leftWin || gameScreen.rightWin)
+                gameScreen.startNewGame();
             dispose();
         }
     }

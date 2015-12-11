@@ -21,8 +21,9 @@ public class VolleyBall extends Game {
 	public SpriteBatch batch;
 	public BitmapFont font;
 
-	public static int scoreToWin = 5; // 15 by default
-	public static int scoreMargin = 2; // How many points the leading player should have before winning the game; 2 by default
+	public static int scoreToWin = 15; // The least number of points to score before a player can win the game; 15 by default
+	public static int scoreMargin = 2; // The difference between points scored by both players should be equal to or
+									// greater than this in other to win the game; 2 by default
 
 	public void create() {
 		batch = new SpriteBatch();
