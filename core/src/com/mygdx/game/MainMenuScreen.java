@@ -2,6 +2,7 @@ package com.mygdx.game;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 
@@ -9,14 +10,19 @@ public class MainMenuScreen implements Screen {
 
     final VolleyBall game;
     GameScreen gameScreen = null;
+    Sound gameMusic;
 
     OrthographicCamera camera;
+
+
 
     public MainMenuScreen(final VolleyBall game) {
         this.game = game;
 
         camera = new OrthographicCamera();
         camera.setToOrtho(false, 800, 480);
+        gameMusic = Gdx.audio.newSound(Gdx.files.internal("Sumo - Volleyball.mp3"));
+        gameMusic.play();
     }
 
     @Override
@@ -41,6 +47,8 @@ public class MainMenuScreen implements Screen {
                 gameScreen.startNewGame();
             dispose();
         }
+
+
     }
 
     @Override
