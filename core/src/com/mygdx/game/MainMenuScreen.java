@@ -3,6 +3,26 @@ package com.mygdx.game;
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.Pixmap;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.scenes.scene2d.Actor;
+import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.ui.Skin;
+import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
+import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
+import com.badlogic.gdx.utils.viewport.Viewport;
+import com.mygdx.game.GameScreen;
+import com.mygdx.game.VolleyBall;
+
+
+
+import com.badlogic.gdx.Game;
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.*;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -23,6 +43,7 @@ public class MainMenuScreen implements Screen {
     Stage stage;
     SpriteBatch batch;
     Viewport vport;
+    MainMenuScreen mms;
 
     Game g;
     OrthographicCamera camera;
@@ -38,6 +59,7 @@ public class MainMenuScreen implements Screen {
     {
         create();
     }
+
 
     public void create() {
         batch = new SpriteBatch();
@@ -80,7 +102,7 @@ public class MainMenuScreen implements Screen {
                                    public void changed(ChangeListener.ChangeEvent event, Actor actor) {
                                        //System.out.println("Clicked! Is checked: " + button.isChecked());
                                        textButton.setText("Starting new game");
-                                       game.setScreen(new GameScreen(game));
+                                       game.setScreen(new GameScreen(game, mms ));
                                        dispose();
 
                                    }
@@ -114,7 +136,7 @@ public class MainMenuScreen implements Screen {
         //Gdx.gl.glClear(GL10.GL_COLOR_BUFFER_BIT);
         stage.act(Math.min(Gdx.graphics.getDeltaTime(), 1 / 30f));
         stage.draw();
-       // Table.drawDebug(stage);
+        // Table.drawDebug(stage);
     }
 
     @Override

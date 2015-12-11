@@ -10,6 +10,7 @@ public class InstructionScreen implements Screen {
     final VolleyBall game;
 
     OrthographicCamera camera;
+    MainMenuScreen mms;
 
     public InstructionScreen(final VolleyBall game) {
         this.game = game;
@@ -32,7 +33,7 @@ public class InstructionScreen implements Screen {
         game.batch.end();
 
         if (Gdx.input.isTouched()) {
-            game.setScreen(new GameScreen(game));
+            game.setScreen(new GameScreen(game, mms));
             dispose();
         }
     }
