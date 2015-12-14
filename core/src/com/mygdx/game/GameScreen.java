@@ -3,8 +3,6 @@ package com.mygdx.game;
 import java.util.Iterator;
 
 import com.badlogic.gdx.*;
-import com.badlogic.gdx.Input.Keys;
-import com.badlogic.gdx.audio.Music;
 import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
@@ -15,8 +13,6 @@ import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.*;
 import com.badlogic.gdx.physics.box2d.*;
-import com.badlogic.gdx.utils.Array;
-import com.badlogic.gdx.utils.TimeUtils;
 
 public class GameScreen extends ApplicationAdapter implements Screen, InputProcessor {
     final VolleyBall game;
@@ -27,7 +23,7 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
 
     SpriteBatch batch;
     Sprite rightHippoSprite, leftHippoSprite, ballSprite, netSprite;
-    Texture hippoImg, ballImg, netImg;
+    Texture hippoRed, hippoBlue, ballImg, netImg;
     World world;
     Body rightHippo, leftHippo, ball, net;
     Body bottomEdge, topEdge, leftEdge, rightEdge;
@@ -75,7 +71,6 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
     // Other calibrations
     final float BALL_DENSITY = 1.5f; // Less density than the hippos
     final float BALL_RESTITUTION = 0.7f; // Unlike the hippos, the ball will bounce off everything
-    final float WALL_RESTITUTION = 0.5f; // Hippos and ball lose half of their velocity upon collision with walls
     final float NET_RESTITUTION = 0.95f; // Hippos and ball will retain most of their velocity upon collision with the net
     final float NET_SCALE = 0.75f;
     final float TIME_TO_NEXT_ROUND = 2f; // Wait 2 seconds after scoring to start next round
@@ -86,17 +81,17 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
     final short BALL_ENTITY = 0x1 << 1; // The ball collides with hippos and the world
     final short WORLD_ENTITY = 0x1 << 2;
 
-    public GameScreen(final VolleyBall game, MainMenuScreen mainMenuScreen) {
+    public GameScreen(final VolleyBall game) {
         this.game = game;
-        this.mainMenuScreen = mainMenuScreen;
 
         batch = new SpriteBatch();
-        hippoImg = new Texture("Hippo.png");
+        hippoRed = new Texture("Hippored.png");
+        hippoBlue = new Texture("Hippoblue.png");
         ballImg = new Texture("volleyball.png");
         netImg = new Texture("Net.png");
-        leftHippoSprite = new Sprite(hippoImg); // Faces towards the right by default
+        leftHippoSprite = new Sprite(hippoRed); // Faces towards the right by default
         leftHippoSprite.setScale(HIPPO_SCALE);
-        rightHippoSprite = new Sprite(hippoImg);
+        rightHippoSprite = new Sprite(hippoBlue);
         rightHippoSprite.flip(true,false); // Flip horizontally so the right hippo will face towards the left by default
         rightHippoSprite.setScale(HIPPO_SCALE);
         ballSprite = new Sprite(ballImg);
@@ -138,9 +133,9 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         // We don't want the 50 pixel padding for the other edges, so set height to screen height
         h = Gdx.graphics.getHeight()/PIXELS_TO_METERS;
 
-        topEdge = createScreenEdge(w/2, h/2, -w/2, h/2);
-        leftEdge = createScreenEdge(-w/2,-h/2,-w/2,h/2);
-        rightEdge = createScreenEdge(w/2, h/2, w/2, -h/2);
+        topEdge = createScreenEdge(w/2, h/2, -w/2, h/2, 0f);
+        leftEdge = createScreenEdge(-w/2, -h/2, -w/2, h/2, 0f);
+        rightEdge = createScreenEdge(w/2, h/2, w/2, -h/2, 0f);
         // End edge definitions
 
         /*
@@ -246,7 +241,7 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         camera = new OrthographicCamera(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 
         // Setup complete; initialize the game with right hippo on serve
-        startNewGame(rightHippo);
+        startNewGame();
     }
 
     @Override
@@ -328,20 +323,20 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         if (hasBallLanded) {
             // If the right hippo has won the game
             if (rightWin) {
-                font.draw(batch, "Right player wins the game! (Click anywhere to exit)", 0f, 0f);
+                font.draw(batch, "Blue player wins the game! (Click anywhere to exit)", 0f, 0f);
                 this.state = State.FINISHED;
             }
             // If the left hippo has won the game
             else if (leftWin) {
-                font.draw(batch, "Left player wins the game! (Click anywhere to exit)", 0f, 0f);
+                font.draw(batch, "Red player wins the game! (Click anywhere to exit)", 0f, 0f);
                 this.state = State.FINISHED;
             }
             // Neither hippo has won the game yet
             else {
                 if (scoringHippo)
-                    font.draw(batch, "Right player scores!", 0f, 0f);
+                    font.draw(batch, "Blue player scores!", 0f, 0f);
                 else
-                    font.draw(batch, "Left player scores!", 0f, 0f);
+                    font.draw(batch, "Red player scores!", 0f, 0f);
 
                 // Wait one second before pausing and resetting the game state
                 timeSinceLanding += delta;
@@ -359,8 +354,9 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         if (Gdx.input.isTouched()) {
             if (this.state == State.FINISHED) {
                 hasBallLanded = false; // Exiting game screen, prevent the above code from executing upon return
-                game.setScreen(mainMenuScreen);
-                // Do not use dispose()
+                game.setScreen(new MainMenuScreen(game));
+                game.music.stop();
+                // Do not use dispose() on the GameScreen object; the program will crash
             }
         }
 
@@ -381,12 +377,12 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
 
         // Display the left player's score count at bottom left corner
         font.draw(batch,
-                "Left player score: " + leftScore,
+                "Red player score: " + leftScore,
                 -Gdx.graphics.getWidth() / 2 + 2.5f, -Gdx.graphics.getHeight() / 2 + 20);
 
         // Display the right player's score count at bottom right corner
         font.draw(batch,
-                "Right player score: " + rightScore,
+                "Blue player score: " + rightScore,
                 Gdx.graphics.getWidth() / 2 - 145, -Gdx.graphics.getHeight() / 2 + 20);
 
         batch.end();
@@ -594,6 +590,25 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         return screenEdgeBody;
     }
 
+    public Body createScreenEdge (float v1X, float v1Y, float v2X, float v2Y, float friction) {
+        BodyDef edgeBodyDef = new BodyDef();
+        edgeBodyDef.type = BodyDef.BodyType.StaticBody;
+        edgeBodyDef.position.set(0,0);
+        FixtureDef edgeFixtureDef = new FixtureDef();
+        edgeFixtureDef.friction = friction;
+        edgeFixtureDef.filter.categoryBits = WORLD_ENTITY;
+
+        EdgeShape edgeShape = new EdgeShape();
+        edgeFixtureDef.shape = edgeShape;
+        edgeShape.set(v1X, v1Y, v2X, v2Y);
+
+        Body screenEdgeBody = world.createBody(edgeBodyDef);
+        screenEdgeBody.createFixture(edgeFixtureDef);
+        edgeShape.dispose();
+
+        return screenEdgeBody;
+    }
+
     public void startNewRound(Body whichHippo) {
         // Starting next round
         timeUntilStart = TIME_TO_NEXT_ROUND/2;
@@ -633,7 +648,16 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         leftWin = false;
         rightWin = false;
         roundCount = 0;
+        game.music.play();
         startNewRound(whichHippo);
+    }
+
+    public void startNewGame() {
+        // Coin flip; which hippo will have the first serve at start of the game
+        if (MathUtils.randomBoolean())
+            startNewGame(rightHippo);
+        else
+            startNewGame(leftHippo);
     }
 
     @Override
@@ -651,7 +675,8 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
 
     @Override
     public void dispose() {
-        hippoImg.dispose();
+        hippoRed.dispose();
+        hippoBlue.dispose();
         ballImg.dispose();
         netImg.dispose();
         world.dispose();
