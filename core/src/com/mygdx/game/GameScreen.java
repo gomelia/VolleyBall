@@ -55,7 +55,7 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
     float timeUntilStart; // Timer until the new round starts and game state is resumed (players cannot pause/resume during this time)
 
     // Variables for game rendering
-    boolean drawSprite = true, drawDebug = true;
+    boolean drawSprite = true, drawDebug = false;
 
     // Hippo calibrations
     final float HIPPO_SCALE = 1.25f; // Decides the size of the hippo; density and velocity variables are scaled by this value
@@ -328,7 +328,8 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
             }
             // If the left hippo has won the game
             else if (leftWin) {
-                font.draw(batch, "Red player wins the game! (Click anywhere to exit)", 0f, 0f);
+                font.draw(batch, "Red player wins the game! \n" +
+                        "(Click anywhere to return to main menu)", 0f, 0f);
                 this.state = State.FINISHED;
             }
             // Neither hippo has won the game yet
@@ -350,9 +351,9 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
             }
         }
 
-        // If the game is finished, wait for the user to click to return to main menu
+        // If the game is finished or paused, wait for the user to click to return to main menu
         if (Gdx.input.isTouched()) {
-            if (this.state == State.FINISHED) {
+            if (this.state == State.FINISHED || (this.state == State.PAUSE && !hasBallLanded && !isNextRoundStarting)) {
                 hasBallLanded = false; // Exiting game screen, prevent the above code from executing upon return
                 game.setScreen(new MainMenuScreen(game));
                 game.music.stop();
@@ -373,7 +374,8 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
             }
         }
         else if (this.state == State.PAUSE)
-            font.draw(batch, "Paused", 0f, 0f);
+            font.draw(batch, "Paused \n" +
+                    "(Click anywhere to return to main menu)", 0f, 0f);
 
         // Display the left player's score count at bottom left corner
         font.draw(batch,

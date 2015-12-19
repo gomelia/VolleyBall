@@ -23,6 +23,7 @@ public class VolleyBall extends Game {
 		font = new BitmapFont();
 		// Fetching the music file incurs a significant loading time, so do it before creating the menu screen
 		music = Gdx.audio.newMusic(Gdx.files.internal("Sumo_music.mp3"));
+		music.setLooping(true);
 		this.setScreen(new MainMenuScreen(this));
 	}
 

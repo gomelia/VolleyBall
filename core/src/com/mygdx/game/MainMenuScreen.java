@@ -1,7 +1,10 @@
 package com.mygdx.game;
 
+import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.audio.Sound;
+import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.*;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
@@ -14,33 +17,28 @@ import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Sprite;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 
 public class MainMenuScreen implements Screen {
 
     final VolleyBall game;
     GameScreen gameScreen = null;
+    InstructionScreen helpScreen = null;
     MainMenuScreen mainMenuScreen = null;
     Texture background;
     Sprite backgroundSprite;
 
     Skin skin;
     Stage stage;
-    SpriteBatch batch;
     Viewport vport;
-
-    OrthographicCamera camera;
 
     public MainMenuScreen(final VolleyBall game) {
         create();
         this.game = game;
         mainMenuScreen = this;
-
-        //camera = new OrthographicCamera();
-        //camera.setToOrtho(false, 800, 480);
     }
 
     public void create() {
-        batch = new SpriteBatch();
         stage = new Stage();
         Gdx.input.setInputProcessor(stage);
 
@@ -75,18 +73,30 @@ public class MainMenuScreen implements Screen {
         skin.add("default", textButtonStyle);
 
         // Create a button with the "default" TextButtonStyle. A 3rd parameter can be used to specify a name other than "default".
-        final TextButton textButton = new TextButton("PLAY", textButtonStyle);
-        textButton.setPosition(200, 200);
-        stage.addActor(textButton);
+        final TextButton playButton = new TextButton("PLAY", textButtonStyle);
+        playButton.setPosition(200, 200);
+        stage.addActor(playButton);
         //stage.addActor(textButton);
         //stage.addActor(textButton);
-        textButton.addListener(new ChangeListener() {
-            public void changed(ChangeListener.ChangeEvent event, Actor actor) {
-                textButton.setText("Starting new game");
+        playButton.addListener(new ChangeListener() {
+            public void changed(ChangeEvent event, Actor actor) {
+                playButton.setText("Starting new game");
                 if (gameScreen == null)
                     gameScreen = new GameScreen(game);
                 game.setScreen(gameScreen);
                 gameScreen.startNewGame();
+                dispose();
+            }
+        });
+
+        final TextButton helpButton = new TextButton("HELP", textButtonStyle);
+        helpButton.setPosition(400, 200);
+        stage.addActor(helpButton);
+        helpButton.addListener(new ChangeListener() {
+            public void changed(ChangeEvent event, Actor actor) {
+                if (helpScreen == null)
+                    helpScreen = new InstructionScreen(game);
+                game.setScreen(helpScreen);
                 dispose();
             }
         });
@@ -116,6 +126,7 @@ public class MainMenuScreen implements Screen {
     public void resume() {}
     @Override
     public void dispose() {
+        background.dispose();
         stage.dispose();
         skin.dispose();
     }
