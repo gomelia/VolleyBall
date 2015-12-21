@@ -6,8 +6,8 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 
 public class VolleyBall extends Game {
-	public static final int SCREEN_HEIGHT = 900;
-	public static final int SCREEN_WIDTH = 1200;
+	public static final int SCREEN_HEIGHT = 768;
+	public static final int SCREEN_WIDTH = 950;
 
 	public SpriteBatch batch;
 	public BitmapFont font;

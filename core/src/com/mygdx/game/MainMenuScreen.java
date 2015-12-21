@@ -44,7 +44,7 @@ public class MainMenuScreen implements Screen {
 
         background = new Texture("mainscreen.jpg");
         backgroundSprite = new Sprite(background);
-        backgroundSprite.setBounds(0f, 0f, 1200f, 900f);
+        backgroundSprite.setBounds(0f, 0f, 950f, 768f);
 
         // A skin can be loaded via JSON or defined programmatically, either is fine. Using a skin is optional but strongly
         // recommended solely for the convenience of getting a texture, region, etc as a drawable, tinted drawable, etc.
@@ -74,7 +74,7 @@ public class MainMenuScreen implements Screen {
 
         // Create a button with the "default" TextButtonStyle. A 3rd parameter can be used to specify a name other than "default".
         final TextButton playButton = new TextButton("PLAY", textButtonStyle);
-        playButton.setPosition(200, 200);
+        playButton.setPosition(150, 75);
         stage.addActor(playButton);
         //stage.addActor(textButton);
         //stage.addActor(textButton);
@@ -90,7 +90,7 @@ public class MainMenuScreen implements Screen {
         });
 
         final TextButton helpButton = new TextButton("HELP", textButtonStyle);
-        helpButton.setPosition(400, 200);
+        helpButton.setPosition(417, 75);
         stage.addActor(helpButton);
         helpButton.addListener(new ChangeListener() {
             public void changed(ChangeEvent event, Actor actor) {
@@ -102,7 +102,7 @@ public class MainMenuScreen implements Screen {
         });
 
         final TextButton exitButton = new TextButton("QUIT", textButtonStyle);
-        exitButton.setPosition(800, 200);
+        exitButton.setPosition(700, 75);
         stage.addActor(exitButton);
         exitButton.addListener(new ChangeListener() {
             public void changed(ChangeEvent event, Actor actor) {

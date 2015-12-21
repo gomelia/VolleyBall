@@ -22,7 +22,7 @@ public class InstructionScreen implements Screen {
     public void create() {
         background = new Texture("mainscreen.jpg");
         backgroundSprite = new Sprite(background);
-        backgroundSprite.setBounds(0f, 0f, 1200f, 900f);
+        backgroundSprite.setBounds(0f, 0f, 950f, 768f);
         helpMessage = "Welcome to Hippo Volleyball! \n" +
                 "Click anywhere to return to main menu. \n\n\n\n" +
                 "This game is designed to be played by two players only. \n\n" +
@@ -46,7 +46,7 @@ public class InstructionScreen implements Screen {
         float scaleX = game.font.getData().scaleX;
         float scaleY = game.font.getData().scaleY;
         // Set the scale of the font to double the default
-        game.font.getData().setScale(2f);
+        game.font.getData().setScale(1.5f);
         // First print the message in pure black; this will provide a drop shadow effect that improves readability
         game.font.setColor(0f, 0f, 0f, 255f);
         game.font.draw(game.batch, helpMessage, 0, VolleyBall.SCREEN_HEIGHT - 102.5f, VolleyBall.SCREEN_WIDTH, Align.center, false);
