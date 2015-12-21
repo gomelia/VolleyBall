@@ -25,6 +25,7 @@ public class MainMenuScreen implements Screen {
     GameScreen gameScreen = null;
     InstructionScreen helpScreen = null;
     MainMenuScreen mainMenuScreen = null;
+    SettingsScreen settingsScreen = null;
     Texture background;
     Sprite backgroundSprite;
 
@@ -90,7 +91,7 @@ public class MainMenuScreen implements Screen {
         });
 
         final TextButton helpButton = new TextButton("HELP", textButtonStyle);
-        helpButton.setPosition(417, 75);
+        helpButton.setPosition(350, 75);
         stage.addActor(helpButton);
         helpButton.addListener(new ChangeListener() {
             public void changed(ChangeEvent event, Actor actor) {
@@ -101,8 +102,20 @@ public class MainMenuScreen implements Screen {
             }
         });
 
+        final TextButton settingsButton = new TextButton("SETTINGS", textButtonStyle);
+        settingsButton.setPosition(550, 75);
+        stage.addActor(settingsButton);
+        settingsButton.addListener(new ChangeListener() {
+            public void changed(ChangeEvent event, Actor actor) {
+                if (settingsScreen == null)
+                    settingsScreen = new SettingsScreen(game);
+                game.setScreen(settingsScreen);
+                dispose();
+            }
+        });
+
         final TextButton exitButton = new TextButton("QUIT", textButtonStyle);
-        exitButton.setPosition(700, 75);
+        exitButton.setPosition(750, 75);
         stage.addActor(exitButton);
         exitButton.addListener(new ChangeListener() {
             public void changed(ChangeEvent event, Actor actor) {

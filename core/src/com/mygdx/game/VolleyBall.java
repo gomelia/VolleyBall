@@ -17,6 +17,11 @@ public class VolleyBall extends Game {
 	public static int scoreMargin = 2; // The difference between points scored by both players should be equal to or
 	// greater than this in other to win the game; 2 by default
 
+	public static final int MAX_SCORE_TOTAL = 99;
+	public static final int MIN_SCORE_TOTAL = 2;
+	public static final int MAX_SCORE_MARGIN = 2;
+	public static final int MIN_SCORE_MARGIN = 2;
+
 	public void create() {
 		batch = new SpriteBatch();
 		//Use LibGDX's default Arial font.
@@ -29,6 +34,16 @@ public class VolleyBall extends Game {
 
 	public void render() {
 		super.render(); //important!
+	}
+
+	public void increaseScore() {
+		if (scoreToWin < MAX_SCORE_TOTAL)
+			scoreToWin++;
+	}
+
+	public void decreaseScore() {
+		if (scoreToWin > MIN_SCORE_TOTAL)
+			scoreToWin--;
 	}
 
 	public void dispose() {

@@ -98,7 +98,7 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
         netSprite = new Sprite(netImg);
         background = new Texture("anime_style_background___beach_by_azuki_sato-d2zhqix.jpg");
         backgroundSprite = new Sprite(background);
-        backgroundSprite.setBounds(0f, 0f, 1200f, 900f);
+        backgroundSprite.setBounds(0f, 0f, 950f, 768f);
         backgroundSprite.setCenter(0, 0);
 
         wavSound1 = Gdx.audio.newSound(Gdx.files.internal("bgrunt.wav"));

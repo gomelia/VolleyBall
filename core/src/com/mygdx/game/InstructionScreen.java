@@ -23,6 +23,7 @@ public class InstructionScreen implements Screen {
         background = new Texture("mainscreen.jpg");
         backgroundSprite = new Sprite(background);
         backgroundSprite.setBounds(0f, 0f, 950f, 768f);
+        backgroundSprite.setAlpha(200f);
         helpMessage = "Welcome to Hippo Volleyball! \n" +
                 "Click anywhere to return to main menu. \n\n\n\n" +
                 "This game is designed to be played by two players only. \n\n" +
