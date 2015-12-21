@@ -100,6 +100,16 @@ public class MainMenuScreen implements Screen {
                 dispose();
             }
         });
+
+        final TextButton exitButton = new TextButton("QUIT", textButtonStyle);
+        exitButton.setPosition(600, 200);
+        stage.addActor(exitButton);
+        exitButton.addListener(new ChangeListener() {
+            public void changed(ChangeEvent event, Actor actor) {
+                Gdx.app.exit();
+                dispose();
+            }
+        });
     }
 
     @Override
