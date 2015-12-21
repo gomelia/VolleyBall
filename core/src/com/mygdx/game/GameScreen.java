@@ -71,8 +71,8 @@ public class GameScreen extends ApplicationAdapter implements Screen, InputProce
     // Other calibrations
     final float BALL_DENSITY = 1.5f; // Less density than the hippos
     final float BALL_RESTITUTION = 0.7f; // Unlike the hippos, the ball will bounce off everything
-    final float NET_RESTITUTION = 0.95f; // Hippos and ball will retain most of their velocity upon collision with the net
-    final float NET_SCALE = 0.75f;
+    final float NET_RESTITUTION = 0.75f; // Hippos and ball will retain most of their velocity upon collision with the net
+    final float NET_SCALE = 1f;
     final float TIME_TO_NEXT_ROUND = 2f; // Wait 2 seconds after scoring to start next round
     final float PIXELS_TO_METERS = 100f;
 
