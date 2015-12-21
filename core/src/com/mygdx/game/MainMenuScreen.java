@@ -102,7 +102,7 @@ public class MainMenuScreen implements Screen {
         });
 
         final TextButton exitButton = new TextButton("QUIT", textButtonStyle);
-        exitButton.setPosition(600, 200);
+        exitButton.setPosition(800, 200);
         stage.addActor(exitButton);
         exitButton.addListener(new ChangeListener() {
             public void changed(ChangeEvent event, Actor actor) {
